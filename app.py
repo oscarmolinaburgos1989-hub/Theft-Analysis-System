@@ -76,6 +76,7 @@ with st.form("impacto_robo_cmd"):
 # =============================
 
 if calcular:
+    st.write("✅ Botón presionado, calculando impacto...")
     lead_time = LEAD_TIMES[material]
     buffer = BUFFERS[etapa]
 
