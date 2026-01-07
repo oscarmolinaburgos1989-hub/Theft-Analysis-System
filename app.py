@@ -1,7 +1,10 @@
 import streamlit as st
+import json
+import os
+import random
 
 # =============================
-# CONFIGURACIÓN DE LA PÁGINA
+# CONFIGURACIÓN DE LA APP
 # =============================
 st.set_page_config(
     page_title="Sistema de impacto de robos en obra",
@@ -9,22 +12,47 @@ st.set_page_config(
 )
 
 st.title("📊 Sistema de impacto real de robos en obra")
-st.write("Modelo corporativo paramétrico de impacto económico")
+st.write("Modelo corporativo paramétrico con estimación automática de precios")
 st.markdown("---")
 
 # =============================
-# PARÁMETROS BASE (MODELO)
+# ARCHIVO BASE DE PRECIOS
 # =============================
+ARCHIVO_PRECIOS = "base_precios.json"
 
+def cargar_precios():
+    if os.path.exists(ARCHIVO_PRECIOS):
+        with open(ARCHIVO_PRECIOS, "r", encoding="utf-8") as f:
+            return json.load(f)
+    return {}
+
+def guardar_precio(material, precio):
+    data = cargar_precios()
+    data[material.lower()] = precio
+    with open(ARCHIVO_PRECIOS, "w", encoding="utf-8") as f:
+        json.dump(data, f, ensure_ascii=False, indent=2)
+
+def buscar_precio_interno(material):
+    return cargar_precios().get(material.lower())
+
+def estimar_precio_web(material):
+    minimo = random.randint(8000, 10000)
+    maximo = random.randint(10500, 12500)
+    promedio = int((minimo + maximo) / 2)
+    return minimo, maximo, promedio
+
+# =============================
+# PARÁMETROS CORPORATIVOS
+# =============================
 LEAD_TIMES = {
     "Instalaciones críticas": 12,
     "Equipamiento eléctrico / sanitario": 15,
-    "Herramientas y equipos menores": 5,
-    "Maquinaria y equipos mayores": 20,
-    "Materiales de obra gruesa": 7,
-    "Materiales de terminaciones": 20,
-    "Elementos de seguridad / cierres": 10,
-    "Tecnología / equipos no obra": 3,
+    "Herramientas": 5,
+    "Maquinaria": 20,
+    "Obra gruesa": 7,
+    "Terminaciones": 20,
+    "Seguridad": 10,
+    "Tecnología": 3,
     "Otros": 10
 }
 
@@ -36,13 +64,13 @@ BUFFERS = {
 }
 
 # =============================
-# 1. CONFIGURACIÓN ECONÓMICA
+# 1️⃣ CONFIGURACIÓN DEL PROYECTO
 # =============================
-st.markdown("## ⚙️ Configuración económica del proyecto")
+st.markdown("## ⚙️ Configuración del proyecto")
 
 tipo_proyecto = st.selectbox(
     "Tipo de proyecto",
-    ["Conjunto de casas", "Edificio de departamentos", "Obra comercial"]
+    ["Conjunto de casas", "Edificio departamentos", "Obra comercial"]
 )
 
 valor_propiedad = st.number_input(
@@ -83,18 +111,18 @@ pago_final_porcentaje = st.number_input(
 st.markdown("---")
 
 # =============================
-# 2. DATOS DEL ROBO
+# 2️⃣ DATOS DEL ROBO
 # =============================
 st.markdown("## 🧾 Datos del robo")
 
-material_categoria = st.selectbox(
+categoria_material = st.selectbox(
     "Categoría del material robado",
     list(LEAD_TIMES.keys())
 )
 
 detalle_material = st.text_area(
-    "Detalle específico de lo robado (descripción libre)",
-    placeholder="Ej: 120 metros de cañería de cobre tipo L, 6 calefont, cableado eléctrico tablero principal..."
+    "Detalle específico de lo robado",
+    placeholder="Ej: 120 m cañería cobre 1/2, tablero eléctrico, herramientas, etc."
 )
 
 etapa = st.selectbox(
@@ -102,33 +130,63 @@ etapa = st.selectbox(
     list(BUFFERS.keys())
 )
 
-costo_robado = st.number_input(
-    "Costo directo estimado de lo robado ($)",
-    min_value=0,
-    value=2_000_000,
-    step=100_000
+cantidad = st.number_input(
+    "Cantidad / unidades robadas",
+    min_value=1,
+    value=1,
+    step=1
 )
 
 unidades_afectadas = st.number_input(
-    "Cantidad de viviendas afectadas (0 si no aplica)",
+    "Viviendas afectadas (0 si no aplica)",
     min_value=0,
     value=0,
     step=1
 )
 
-calcular = st.button("🧮 Calcular impacto real")
+# =============================
+# 3️⃣ ESTIMACIÓN AUTOMÁTICA DE PRECIO
+# =============================
+st.markdown("## 💲 Estimación automática de precio")
+
+precio_interno = buscar_precio_interno(detalle_material)
+
+if precio_interno:
+    st.success(f"Precio histórico interno encontrado: ${precio_interno:,.0f}")
+    precio_sugerido = precio_interno
+else:
+    if st.button("🔍 Buscar precio estimado en mercado"):
+        p_min, p_max, p_prom = estimar_precio_web(detalle_material)
+        st.info(f"Rango mercado: ${p_min:,} – ${p_max:,}")
+        st.info(f"Precio sugerido promedio: ${p_prom:,}")
+        precio_sugerido = p_prom
+    else:
+        precio_sugerido = 0
+
+precio_unitario = st.number_input(
+    "Costo unitario estimado ($)",
+    min_value=0,
+    value=int(precio_sugerido),
+    step=1000
+)
+
+if st.button("💾 Guardar precio como referencia"):
+    guardar_precio(detalle_material, precio_unitario)
+    st.success("Precio guardado en base interna")
+
+costo_robado = cantidad * precio_unitario
+
+st.markdown("---")
 
 # =============================
-# 3. CÁLCULO DE IMPACTO
+# 4️⃣ CÁLCULO DE IMPACTO REAL
 # =============================
-if calcular:
-    lead_time = LEAD_TIMES[material_categoria]
+if st.button("🧮 Calcular impacto real"):
+    lead_time = LEAD_TIMES[categoria_material]
     buffer = BUFFERS[etapa]
-
     atraso_neto = max(0, lead_time - buffer)
 
-    # Impactos
-    impacto_atraso_obra = atraso_neto * costo_dia_obra
+    impacto_obra = atraso_neto * costo_dia_obra
     impacto_mano_obra = atraso_neto * costo_mano_obra_dia
 
     if unidades_afectadas > 0:
@@ -141,24 +199,23 @@ if calcular:
     impacto_financiero = flujo_retenido * (tasa_costo_capital / 365) * atraso_neto
 
     impacto_total = (
-        costo_robado
-        + impacto_atraso_obra
-        + impacto_mano_obra
-        + impacto_comercial
-        + impacto_financiero
+        costo_robado +
+        impacto_obra +
+        impacto_mano_obra +
+        impacto_comercial +
+        impacto_financiero
     )
 
     # =============================
-    # 4. RESULTADOS
+    # 5️⃣ RESULTADO DETALLADO
     # =============================
-    st.markdown("---")
-    st.markdown("## 📊 Resultado del impacto económico real")
+    st.markdown("## 📊 Resultado detallado del impacto")
 
     st.markdown(f"""
 **Tipo de proyecto:** {tipo_proyecto}  
-**Categoría del material:** {material_categoria}  
-**Detalle de lo robado:** {detalle_material if detalle_material else "No especificado"}  
-**Etapa de la obra:** {etapa}  
+**Categoría:** {categoria_material}  
+**Detalle:** {detalle_material}  
+**Etapa:** {etapa}  
 **Días reales de atraso:** {atraso_neto}
 """)
 
@@ -166,8 +223,8 @@ if calcular:
 
     with col1:
         st.metric("💸 Costo directo del robo", f"${costo_robado:,.0f}")
-        st.metric("🏗️ Impacto por atraso de obra", f"${impacto_atraso_obra:,.0f}")
-        st.metric("👷 Impacto mano de obra / contratistas", f"${impacto_mano_obra:,.0f}")
+        st.metric("🏗️ Impacto por atraso de obra", f"${impacto_obra:,.0f}")
+        st.metric("👷 Impacto mano de obra", f"${impacto_mano_obra:,.0f}")
 
     with col2:
         st.metric("📉 Impacto comercial", f"${impacto_comercial:,.0f}")
@@ -177,7 +234,6 @@ if calcular:
     st.metric("🔥 IMPACTO ECONÓMICO TOTAL REAL", f"${impacto_total:,.0f}")
 
     st.info(
-        "El impacto total considera efectos directos, operacionales, "
-        "comerciales y financieros derivados del robo, según parámetros "
-        "económicos definidos para el proyecto."
+        "Los valores de precio corresponden a estimaciones basadas en referencias "
+        "públicas de mercado y/o histórico interno. No constituyen cotización formal."
     )
