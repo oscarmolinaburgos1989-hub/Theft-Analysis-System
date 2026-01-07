@@ -76,7 +76,8 @@ with st.form("impacto_robo_cmd"):
 # =============================
 
 if calcular:
-    st.write("✅ Botón presionado, calculando impacto...")
+    st.success("✅ Cálculo ejecutado correctamente")
+
     lead_time = LEAD_TIMES[material]
     buffer = BUFFERS[etapa]
 
@@ -87,5 +88,25 @@ if calcular:
         ventas = unidades_afectadas * VALOR_VIVIENDA
         costo_comercial = ventas * (TASA_COSTO_CAPITAL / 365) * atraso_neto
     else:
-        costo
+        costo_comercial = 0
 
+    flujo_retrasado = unidades_afectadas * VALOR_VIVIENDA * PAGO_FINAL
+    costo_financiero = flujo_retrasado * (TASA_COSTO_CAPITAL / 365) * atraso_neto
+
+    impacto_total = costo_robado + costo_atraso + costo_comercial + costo_financiero
+
+    st.markdown("## 📊 Resultado del impacto real")
+
+    col1, col2 = st.columns(2)
+
+    with col1:
+        st.metric("💸 Costo directo del robo", f"${costo_robado:,.0f}")
+        st.metric("⏱️ Días reales de atraso", atraso_neto)
+        st.metric("🏗️ Costo atraso obra", f"${costo_atraso:,.0f}")
+
+    with col2:
+        st.metric("📉 Costo comercial", f"${costo_comercial:,.0f}")
+        st.metric("🏦 Costo financiero", f"${costo_financiero:,.0f}")
+
+    st.markdown("---")
+    st.metric("🔥 IMPACTO TOTAL REAL", f"${impacto_total:,.0f}")
