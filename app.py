@@ -1,30 +1,30 @@
 import streamlit as st
-import pandas as pd
 
 # =============================
 # CONFIGURACIÓN DE LA PÁGINA
 # =============================
 st.set_page_config(
-    page_title="Sistema de análisis de robos en obra",
+    page_title="Sistema de impacto de robos en obra",
     layout="wide"
 )
 
-st.title("📊 Sistema de análisis de robos en obra")
-st.write("Modelo corporativo de impacto económico real (versión web)")
+st.title("📊 Sistema de impacto real de robos en obra")
+st.write("Modelo corporativo paramétrico de impacto económico")
 st.markdown("---")
 
 # =============================
-# PARÁMETROS BASE
+# PARÁMETROS BASE (MODELO)
 # =============================
+
 LEAD_TIMES = {
     "Instalaciones críticas": 12,
     "Equipamiento eléctrico / sanitario": 15,
-    "Herramientas": 5,
-    "Maquinaria": 20,
-    "Obra gruesa": 7,
-    "Terminaciones": 20,
-    "Seguridad": 10,
-    "Tecnología": 3,
+    "Herramientas y equipos menores": 5,
+    "Maquinaria y equipos mayores": 20,
+    "Materiales de obra gruesa": 7,
+    "Materiales de terminaciones": 20,
+    "Elementos de seguridad / cierres": 10,
+    "Tecnología / equipos no obra": 3,
     "Otros": 10
 }
 
@@ -36,34 +36,34 @@ BUFFERS = {
 }
 
 # =============================
-# 1. CONFIGURACIÓN DEL PROYECTO
+# 1. CONFIGURACIÓN ECONÓMICA
 # =============================
-st.markdown("## ⚙️ Configuración del proyecto")
+st.markdown("## ⚙️ Configuración económica del proyecto")
 
 tipo_proyecto = st.selectbox(
     "Tipo de proyecto",
-    ["Conjunto de casas", "Edificio departamentos", "Obra comercial"]
+    ["Conjunto de casas", "Edificio de departamentos", "Obra comercial"]
 )
 
 valor_propiedad = st.number_input(
     "Valor promedio por unidad ($)",
-    min_value=10000000,
-    value=71000000,
-    step=1000000
+    min_value=10_000_000,
+    value=71_000_000,
+    step=1_000_000
 )
 
 costo_dia_obra = st.number_input(
-    "Costo diario de obra ($)",
-    min_value=500000,
-    value=2500000,
-    step=100000
+    "Costo diario de la obra ($)",
+    min_value=500_000,
+    value=2_500_000,
+    step=100_000
 )
 
 costo_mano_obra_dia = st.number_input(
     "Costo diario mano de obra / contratistas ($)",
-    min_value=300000,
-    value=1200000,
-    step=50000
+    min_value=300_000,
+    value=1_200_000,
+    step=50_000
 )
 
 tasa_costo_capital = st.number_input(
@@ -83,25 +83,30 @@ pago_final_porcentaje = st.number_input(
 st.markdown("---")
 
 # =============================
-# 2. INGRESO DE DATOS DEL ROBO
+# 2. DATOS DEL ROBO
 # =============================
-st.markdown("## 🧾 Ingreso de datos del robo")
+st.markdown("## 🧾 Datos del robo")
 
-material = st.selectbox(
-    "Tipo de material robado",
+material_categoria = st.selectbox(
+    "Categoría del material robado",
     list(LEAD_TIMES.keys())
 )
 
+detalle_material = st.text_area(
+    "Detalle específico de lo robado (descripción libre)",
+    placeholder="Ej: 120 metros de cañería de cobre tipo L, 6 calefont, cableado eléctrico tablero principal..."
+)
+
 etapa = st.selectbox(
-    "Etapa de la obra",
+    "Etapa de la obra afectada",
     list(BUFFERS.keys())
 )
 
 costo_robado = st.number_input(
-    "Costo directo de lo robado ($)",
+    "Costo directo estimado de lo robado ($)",
     min_value=0,
-    value=2000000,
-    step=100000
+    value=2_000_000,
+    step=100_000
 )
 
 unidades_afectadas = st.number_input(
@@ -114,37 +119,33 @@ unidades_afectadas = st.number_input(
 calcular = st.button("🧮 Calcular impacto real")
 
 # =============================
-# 3. CÁLCULO DEL IMPACTO
+# 3. CÁLCULO DE IMPACTO
 # =============================
 if calcular:
-    lead_time = LEAD_TIMES[material]
+    lead_time = LEAD_TIMES[material_categoria]
     buffer = BUFFERS[etapa]
 
     atraso_neto = max(0, lead_time - buffer)
 
-    # Impacto obra
-    costo_atraso_obra = atraso_neto * costo_dia_obra
+    # Impactos
+    impacto_atraso_obra = atraso_neto * costo_dia_obra
+    impacto_mano_obra = atraso_neto * costo_mano_obra_dia
 
-    # Impacto mano de obra
-    costo_mano_obra = atraso_neto * costo_mano_obra_dia
-
-    # Impacto comercial
     if unidades_afectadas > 0:
         ventas = unidades_afectadas * valor_propiedad
-        costo_comercial = ventas * (tasa_costo_capital / 365) * atraso_neto
+        impacto_comercial = ventas * (tasa_costo_capital / 365) * atraso_neto
     else:
-        costo_comercial = 0
+        impacto_comercial = 0
 
-    # Impacto financiero
     flujo_retenido = unidades_afectadas * valor_propiedad * pago_final_porcentaje
-    costo_financiero = flujo_retenido * (tasa_costo_capital / 365) * atraso_neto
+    impacto_financiero = flujo_retenido * (tasa_costo_capital / 365) * atraso_neto
 
     impacto_total = (
         costo_robado
-        + costo_atraso_obra
-        + costo_mano_obra
-        + costo_comercial
-        + costo_financiero
+        + impacto_atraso_obra
+        + impacto_mano_obra
+        + impacto_comercial
+        + impacto_financiero
     )
 
     # =============================
@@ -154,22 +155,29 @@ if calcular:
     st.markdown("## 📊 Resultado del impacto económico real")
 
     st.markdown(f"""
-    **Tipo de proyecto:** {tipo_proyecto}  
-    **Material robado:** {material}  
-    **Etapa de la obra:** {etapa}  
-    **Días reales de atraso:** {atraso_neto}
-    """)
+**Tipo de proyecto:** {tipo_proyecto}  
+**Categoría del material:** {material_categoria}  
+**Detalle de lo robado:** {detalle_material if detalle_material else "No especificado"}  
+**Etapa de la obra:** {etapa}  
+**Días reales de atraso:** {atraso_neto}
+""")
 
     col1, col2 = st.columns(2)
 
     with col1:
         st.metric("💸 Costo directo del robo", f"${costo_robado:,.0f}")
-        st.metric("🏗️ Impacto por atraso de obra", f"${costo_atraso_obra:,.0f}")
-        st.metric("👷 Mano de obra / contratistas", f"${costo_mano_obra:,.0f}")
+        st.metric("🏗️ Impacto por atraso de obra", f"${impacto_atraso_obra:,.0f}")
+        st.metric("👷 Impacto mano de obra / contratistas", f"${impacto_mano_obra:,.0f}")
 
     with col2:
-        st.metric("📉 Impacto comercial", f"${costo_comercial:,.0f}")
-        st.metric("🏦 Impacto financiero", f"${costo_financiero:,.0f}")
+        st.metric("📉 Impacto comercial", f"${impacto_comercial:,.0f}")
+        st.metric("🏦 Impacto financiero", f"${impacto_financiero:,.0f}")
 
     st.markdown("---")
-    st.metric("🔥 IMPACTO TOTAL REAL DEL ROBO", f"${impacto_total:,.0f}")
+    st.metric("🔥 IMPACTO ECONÓMICO TOTAL REAL", f"${impacto_total:,.0f}")
+
+    st.info(
+        "El impacto total considera efectos directos, operacionales, "
+        "comerciales y financieros derivados del robo, según parámetros "
+        "económicos definidos para el proyecto."
+    )
