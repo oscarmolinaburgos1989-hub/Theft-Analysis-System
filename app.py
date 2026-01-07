@@ -1,91 +1,90 @@
 import streamlit as st
-from datetime import date
+import pandas as pd
+from datetime import datetime
 
 st.set_page_config(
-    page_title="Sistema de impacto real por robos",
+    page_title="Sistema de Impacto de Robos en Obra",
     layout="centered"
 )
 
-st.title("📊 Sistema de impacto real por robos")
-st.write("Evaluación económica, operativa y comercial del impacto de robos")
+st.title("SISTEMA DE IMPACTO DE ROBOS EN OBRA")
+st.write("Modelo corporativo de impacto económico real (versión web)")
 
 st.markdown("---")
 
-with st.form("impacto_robo"):
-    st.subheader("🧾 Datos generales del evento")
+# =============================
+# 1. CONFIGURACION CORPORATIVA
+# =============================
 
-    fecha = st.date_input("📅 Fecha del robo", value=date.today())
-    lugar = st.text_input("🏗 Obra / Proyecto / Sucursal")
-    tipo_robo = st.selectbox(
-        "🚨 Tipo de evento",
-        ["Robo en obra", "Robo en instalaciones", "Hurto", "Asalto"]
+TASA_COSTO_CAPITAL = 0.10
+PAGO_FINAL = 0.20
+COSTO_DIARIO_OBRA = 2_500_000
+VALOR_VIVIENDA = 71_000_000
+
+LEAD_TIMES = {
+    "Instalaciones críticas (cobre, cañerías)": 12,
+    "Equipamiento eléctrico / sanitario": 15,
+    "Herramientas y equipos menores": 5,
+    "Maquinaria y equipos mayores": 20,
+    "Materiales de obra gruesa": 7,
+    "Materiales de terminaciones": 20,
+    "Elementos de seguridad / cierres": 10,
+    "Tecnología / equipos no obra": 3,
+    "Otros": 10
+}
+
+BUFFERS = {
+    "Obra gruesa": 4,
+    "Instalaciones": 2,
+    "Terminaciones": 1,
+    "Etapa final": 0
+}
+
+# =============================
+# 2. FORMULARIO (IGUAL A CMD)
+# =============================
+
+with st.form("impacto_robo_cmd"):
+    st.subheader("Ingreso de datos del robo")
+
+    material = st.selectbox(
+        "Tipo de material robado",
+        list(LEAD_TIMES.keys())
     )
 
-    st.markdown("---")
-    st.subheader("💰 Impacto directo")
-
-    valor_robado = st.number_input(
-        "Valor del bien robado ($)",
-        min_value=0.0,
-        step=100000.0
+    etapa = st.selectbox(
+        "Etapa de la obra",
+        list(BUFFERS.keys())
     )
 
-    st.markdown("---")
-    st.subheader("⏱ Impacto por retraso en construcción")
-
-    dias_retraso = st.number_input("Días de retraso generados", min_value=0, step=1)
-    costo_diario_obra = st.number_input(
-        "Costo diario de la obra ($)",
-        min_value=0.0,
-        step=100000.0
+    costo_robado = st.number_input(
+        "Costo directo de lo robado ($)",
+        min_value=0,
+        step=100_000
     )
 
-    st.markdown("---")
-    st.subheader("👷 Impacto en mano de obra")
-
-    trabajadores_afectados = st.number_input(
-        "Trabajadores detenidos",
+    unidades_afectadas = st.number_input(
+        "Cantidad de viviendas afectadas (0 si no aplica)",
         min_value=0,
         step=1
     )
-    costo_diario_trabajador = st.number_input(
-        "Costo diario por trabajador ($)",
-        min_value=0.0,
-        step=10000.0
-    )
 
-    st.markdown("---")
-    st.subheader("📉 Impacto comercial")
+    calcular = st.form_submit_button("Calcular impacto real")
 
-    perdida_comercial = st.number_input(
-        "Pérdida comercial estimada ($)",
-        min_value=0.0,
-        step=100000.0
-    )
-    multas = st.number_input(
-        "Multas / penalizaciones ($)",
-        min_value=0.0,
-        step=100000.0
-    )
+# =============================
+# 3. CALCULOS (MISMO CMD)
+# =============================
 
-    st.markdown("---")
-    st.subheader("🧾 Impacto administrativo")
+if calcular:
+    lead_time = LEAD_TIMES[material]
+    buffer = BUFFERS[etapa]
 
-    horas_admin = st.number_input(
-        "Horas administrativas perdidas",
-        min_value=0,
-        step=1
-    )
-    costo_hora_admin = st.number_input(
-        "Costo hora administrativa ($)",
-        min_value=0.0,
-        step=5000.0
-    )
+    atraso_neto = max(0, lead_time - buffer)
+    costo_atraso = atraso_neto * COSTO_DIARIO_OBRA
 
-    generar = st.form_submit_button("📊 Calcular impacto real")
-
-if generar:
-    impacto_obra = dias_retraso * costo_diario_obra
-    impacto_mano_obra = trabajadores_afectados * costo_diario_trabajador * dias_retraso
-    impacto_a_
+    if unidades_afectadas > 0:
+        ventas = unidades_afectadas * VALOR_VIVIENDA
+        costo_comercial = ventas * (TASA_COSTO_CAPITAL / 365) * atraso_neto
+    else:
+        costo
 
