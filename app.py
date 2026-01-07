@@ -1,31 +1,37 @@
 import streamlit as st
-import pandas as pd
+from datetime import date
 
 st.set_page_config(
     page_title="Sistema de análisis de robos",
-    layout="wide"
+    layout="centered"
 )
 
 st.title("📊 Sistema de análisis de robos")
-st.write("Sistema de análisis e impacto de costo real por robos")
+st.write("Ingresa los datos del robo y obtén el detalle automáticamente")
 
 st.markdown("---")
 
-st.subheader("📁 Cargar archivo Excel")
-archivo = st.file_uploader(
-    "Sube un archivo Excel (.xlsx)",
-    type=["xlsx"]
-)
+with st.form("form_robo"):
+    fecha = st.date_input("📅 Fecha del robo", value=date.today())
+    lugar = st.text_input("🏪 Lugar / Sucursal")
+    producto = st.text_input("📦 Producto robado")
+    cantidad = st.number_input("🔢 Cantidad robada", min_value=1, step=1)
+    costo_unitario = st.number_input("💲 Costo unitario", min_value=0.0, step=100.0)
 
-if archivo is not None:
-    df = pd.read_excel(archivo)
+    calcular = st.form_submit_button("📈 Calcular impacto")
 
-    st.success("Archivo cargado correctamente")
+if calcular:
+    total = cantidad * costo_unitario
 
-    st.subheader("📋 Datos")
-    st.dataframe(df)
+    st.success("Cálculo realizado correctamente")
 
-    if "Costo" in df.columns:
-        st.subheader("💰 Impacto económico")
-        total = df["Costo"].sum()
-        st.metric("Costo total de robos", f"${total:,.0f}")
+    st.subheader("🧾 Detalle del robo")
+    st.write(f"**Fecha:** {fecha}")
+    st.write(f"**Lugar:** {lugar}")
+    st.write(f"**Producto:** {producto}")
+    st.write(f"**Cantidad robada:** {cantidad}")
+    st.write(f"**Costo unitario:** ${costo_unitario:,.0f}")
+
+    st.markdown("---")
+    st.metric("💰 Costo total del robo", f"${total:,.0f}")
+
