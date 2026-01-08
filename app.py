@@ -5,61 +5,78 @@ import re
 # CONFIGURACIÓN GENERAL
 # =============================
 st.set_page_config(
-    page_title="Sistema de impacto de robos en obra",
+    page_title="Análisis real de impacto por robo en obra",
     layout="wide"
 )
 
-st.title("📊 Sistema de impacto real de robos en obra")
-st.write("Informe técnico detallado de impacto económico, operativo y financiero")
+st.title("📊 Sistema inteligente de análisis de impacto por robo")
+st.write("Cálculo automático, rápido y defendible del costo real del robo")
 st.markdown("---")
 
 # =============================
-# BASE TÉCNICA DE PRECIOS
+# BASE DE PRECIOS CHILE (REFERENCIA)
 # =============================
-BASE_PRECIOS = {
-    "cobre": {"metro": (9000, 12000)},
-    "cañeria": {"metro": (9000, 12000)},
-    "cable": {"metro": (2500, 6000)},
-    "alambre": {"metro": (1500, 3000)},
-    "tablero": {"unidad": (180000, 350000)},
-    "calefont": {"unidad": (120000, 280000)},
-    "herramienta": {"unidad": (30000, 150000)},
-    "maquinaria": {"unidad": (800000, 5000000)},
-    "reja": {"metro": (40000, 120000)},
-    "porton": {"unidad": (600000, 2000000)}
+# Rangos reales de mercado chileno (CLP)
+BASE_PRECIOS_CHILE = {
+    "calefon": {
+        "descripcion": "Calefón a gas estándar (ionizado / tiro natural)",
+        "unidad": "unidad",
+        "min": 120000,
+        "max": 280000
+    },
+    "monomando": {
+        "descripcion": "Grifería monomando baño / cocina estándar",
+        "unidad": "unidad",
+        "min": 35000,
+        "max": 120000
+    },
+    "cobre": {
+        "descripcion": "Cañería de cobre sanitaria",
+        "unidad": "metro",
+        "min": 9000,
+        "max": 12000
+    },
+    "cable": {
+        "descripcion": "Cable eléctrico cobre",
+        "unidad": "metro",
+        "min": 2500,
+        "max": 6000
+    },
+    "tablero": {
+        "descripcion": "Tablero eléctrico domiciliario",
+        "unidad": "unidad",
+        "min": 180000,
+        "max": 350000
+    },
+    "herramienta": {
+        "descripcion": "Herramientas manuales / eléctricas",
+        "unidad": "unidad",
+        "min": 30000,
+        "max": 150000
+    }
 }
 
-def estimar_precio(detalle):
-    detalle = detalle.lower()
-    unidad = "unidad"
-    if "metro" in detalle or "metros" in detalle:
-        unidad = "metro"
-
-    for palabra, valores in BASE_PRECIOS.items():
-        if re.search(palabra, detalle):
-            minimo, maximo = valores[unidad]
-            promedio = int((minimo + maximo) / 2)
-            return palabra, unidad, minimo, maximo, promedio
-
-    return "referencia genérica", "unidad", 50000, 150000, 100000
+def detectar_producto(texto):
+    texto = texto.lower()
+    for clave in BASE_PRECIOS_CHILE:
+        if re.search(clave, texto):
+            p = BASE_PRECIOS_CHILE[clave]
+            promedio = int((p["min"] + p["max"]) / 2)
+            return clave, p["descripcion"], p["unidad"], p["min"], p["max"], promedio
+    return None, "Producto genérico", "unidad", 50000, 150000, 100000
 
 # =============================
 # CONFIGURACIÓN DEL PROYECTO
 # =============================
-st.header("1️⃣ Configuración del proyecto")
+st.header("1️⃣ Configuración económica del proyecto")
 
-tipo_proyecto = st.selectbox(
-    "Tipo de proyecto",
-    ["Conjunto de casas", "Edificio de departamentos", "Obra comercial"]
-)
-
-valor_propiedad = st.number_input(
-    "Valor promedio por unidad ($)",
+valor_vivienda = st.number_input(
+    "Valor promedio por vivienda ($)",
     value=71_000_000,
     step=1_000_000
 )
 
-costo_dia_obra = st.number_input(
+costo_diario_obra = st.number_input(
     "Costo diario total de la obra ($)",
     value=2_500_000,
     step=100_000
@@ -71,12 +88,12 @@ costo_mano_obra_dia = st.number_input(
     step=50_000
 )
 
-tasa_costo_capital = st.number_input(
+tasa_capital = st.number_input(
     "Costo de capital anual (%)",
     value=10.0
 ) / 100
 
-pago_final_porcentaje = st.number_input(
+pago_final = st.number_input(
     "Pago final retenido (%)",
     value=20.0
 ) / 100
@@ -88,27 +105,25 @@ st.markdown("---")
 # =============================
 st.header("2️⃣ Detalle del robo")
 
-detalle_material = st.text_area(
-    "Detalle específico de lo robado",
-    placeholder="Ej: 120 metros cañería cobre 1/2 tipo L"
+detalle = st.text_area(
+    "¿Qué fue robado?",
+    placeholder="Ej: 2 calefont ionizado + 5 monomando baño"
 )
 
 cantidad = st.number_input(
-    "Cantidad / unidades robadas",
+    "Cantidad robada",
     min_value=1,
     value=1
 )
 
-unidades_afectadas = st.number_input(
-    "Viviendas afectadas (0 si no aplica)",
-    min_value=0,
-    value=0
+dias_atraso = st.number_input(
+    "Días de atraso generados por el robo",
+    value=10
 )
 
-dias_atraso = st.number_input(
-    "Días estimados de atraso generados por el robo",
-    min_value=0,
-    value=10
+viviendas_afectadas = st.number_input(
+    "Viviendas afectadas (0 si no aplica)",
+    value=0
 )
 
 st.markdown("---")
@@ -116,47 +131,45 @@ st.markdown("---")
 # =============================
 # ESTIMACIÓN DE PRECIO
 # =============================
-st.header("3️⃣ Estimación técnica de precio")
+st.header("3️⃣ Precio de referencia automático")
 
-palabra, unidad, p_min, p_max, p_prom = estimar_precio(detalle_material)
+clave, descripcion, unidad, p_min, p_max, p_prom = detectar_producto(detalle)
 
 st.info(f"""
-Referencia técnica detectada: **{palabra}**  
+Producto reconocido: **{descripcion}**  
 Unidad considerada: **{unidad}**  
-Rango estimado mercado: **${p_min:,} – ${p_max:,}**
+Rango mercado Chile: **${p_min:,} – ${p_max:,}**
 """)
 
 precio_unitario = st.number_input(
-    "Costo unitario estimado ($)",
+    "Precio unitario de referencia ($)",
     value=p_prom,
     step=1000
 )
 
-costo_robado = cantidad * precio_unitario
-
-st.markdown("---")
+costo_directo = cantidad * precio_unitario
 
 # =============================
-# CÁLCULOS DE IMPACTO
+# CÁLCULO DE IMPACTO
 # =============================
-if st.button("🧮 Calcular impacto detallado"):
+if st.button("🧮 Analizar impacto real"):
 
-    impacto_atraso_obra = dias_atraso * costo_dia_obra
+    impacto_obra = dias_atraso * costo_diario_obra
     impacto_mano_obra = dias_atraso * costo_mano_obra_dia
 
-    if unidades_afectadas > 0:
-        ventas_afectadas = unidades_afectadas * valor_propiedad
-        impacto_comercial = ventas_afectadas * (tasa_costo_capital / 365) * dias_atraso
-        flujo_retenido = ventas_afectadas * pago_final_porcentaje
-        impacto_financiero = flujo_retenido * (tasa_costo_capital / 365) * dias_atraso
+    if viviendas_afectadas > 0:
+        ventas_afectadas = viviendas_afectadas * valor_vivienda
+        impacto_comercial = ventas_afectadas * (tasa_capital / 365) * dias_atraso
+        flujo_retenido = ventas_afectadas * pago_final
+        impacto_financiero = flujo_retenido * (tasa_capital / 365) * dias_atraso
     else:
-        ventas_afectadas = 0
         impacto_comercial = 0
         impacto_financiero = 0
+        ventas_afectadas = 0
 
     impacto_total = (
-        costo_robado +
-        impacto_atraso_obra +
+        costo_directo +
+        impacto_obra +
         impacto_mano_obra +
         impacto_comercial +
         impacto_financiero
@@ -165,56 +178,53 @@ if st.button("🧮 Calcular impacto detallado"):
     # =============================
     # INFORME DETALLADO
     # =============================
-    st.markdown("## 📑 INFORME TÉCNICO DE IMPACTO")
+    st.markdown("## 📑 INFORME DETALLADO DE IMPACTO")
 
-    st.markdown("### 🔹 1. Descripción del evento")
+    st.markdown("### 🔹 1. Costo directo del robo")
     st.write(f"""
-- Tipo de proyecto: **{tipo_proyecto}**
-- Material robado: **{detalle_material}**
-- Cantidad: **{cantidad} {unidad}**
-- Días de atraso generados: **{dias_atraso}**
+Se reconoce el producto **{descripcion}** a partir del texto ingresado.
+El sistema utiliza referencias del mercado chileno, con un rango entre
+${p_min:,} y ${p_max:,}.  
+Se adopta un valor de referencia **${precio_unitario:,.0f}** por {unidad}.
 """)
 
-    st.markdown("### 🔹 2. Impacto directo")
-    st.write(f"""
-- Precio unitario estimado: **${precio_unitario:,.0f}**
-- Costo directo del robo: **${costo_robado:,.0f}**
-""")
+    st.metric("Costo directo del robo", f"${costo_directo:,.0f}")
 
-    st.markdown("### 🔹 3. Impacto operativo (obra)")
+    st.markdown("### 🔹 2. Impacto por atraso de obra")
     st.write(f"""
-- Costo diario de obra: **${costo_dia_obra:,.0f}**
-- Días de atraso: **{dias_atraso}**
-- Impacto por atraso de obra: **${impacto_atraso_obra:,.0f}**
+El robo genera un atraso estimado de **{dias_atraso} días**.
+Cada día de obra tiene un costo de **${costo_diario_obra:,.0f}**.
 """)
+    st.metric("Impacto por atraso de obra", f"${impacto_obra:,.0f}")
 
-    st.markdown("### 🔹 4. Impacto en mano de obra")
+    st.markdown("### 🔹 3. Impacto en mano de obra")
     st.write(f"""
-- Costo diario mano de obra / contratistas: **${costo_mano_obra_dia:,.0f}**
-- Impacto total mano de obra: **${impacto_mano_obra:,.0f}**
+Durante el atraso, se mantiene costo diario de mano de obra y contratistas
+por **${costo_mano_obra_dia:,.0f}**.
 """)
+    st.metric("Impacto mano de obra", f"${impacto_mano_obra:,.0f}")
 
-    st.markdown("### 🔹 5. Impacto comercial")
+    st.markdown("### 🔹 4. Impacto comercial")
     st.write(f"""
-- Unidades afectadas: **{unidades_afectadas}**
-- Ventas afectadas estimadas: **${ventas_afectadas:,.0f}**
-- Impacto financiero por retraso comercial: **${impacto_comercial:,.0f}**
+Se consideran **{viviendas_afectadas} viviendas afectadas**, con un valor
+promedio de **${valor_vivienda:,.0f}** por unidad.
+El costo corresponde al capital inmovilizado durante el atraso.
 """)
+    st.metric("Impacto comercial", f"${impacto_comercial:,.0f}")
 
-    st.markdown("### 🔹 6. Impacto financiero")
+    st.markdown("### 🔹 5. Impacto financiero")
     st.write(f"""
-- Pago final retenido: **{pago_final_porcentaje*100:.1f}%**
-- Capital inmovilizado: **${ventas_afectadas * pago_final_porcentaje:,.0f}**
-- Costo financiero del atraso: **${impacto_financiero:,.0f}**
+Se considera un pago final retenido del **{pago_final*100:.1f}%**,
+con un costo de capital anual del **{tasa_capital*100:.1f}%**.
 """)
+    st.metric("Impacto financiero", f"${impacto_financiero:,.0f}")
 
     st.markdown("---")
     st.metric("💥 IMPACTO ECONÓMICO TOTAL REAL", f"${impacto_total:,.0f}")
 
-    st.markdown("---")
     st.info(
-        "Este informe corresponde a una estimación técnica basada en parámetros "
-        "económicos definidos por el usuario y referencias públicas de mercado. "
-        "No constituye cotización formal."
+        "Este análisis corresponde a una estimación técnica basada en referencias "
+        "del mercado chileno y parámetros económicos del proyecto. "
+        "No constituye cotización comercial."
     )
 
