@@ -218,5 +218,3 @@ if st.button("🧮 Calcular impacto detallado"):
         "No constituye cotización formal."
     )
 
-    )
-
