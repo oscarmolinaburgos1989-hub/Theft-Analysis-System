@@ -494,5 +494,56 @@ if len(df_db) > 0:
             )
         elif variacion < -10:
             st.success
+# =============================
+# EXPORTAR A EXCEL / POWER BI
+# =============================
+st.markdown("---")
+st.header("📤 Exportación de datos")
+
+if len(df_db) > 0:
+
+    exportar = st.button("⬇️ Exportar análisis a Excel / Power BI")
+
+    if exportar:
+        archivo_excel = "robos_analisis.xlsx"
+
+        with pd.ExcelWriter(archivo_excel, engine="openpyxl") as writer:
+
+            # 1️⃣ Base completa
+            df_db.to_excel(writer, sheet_name="Base_Robos", index=False)
+
+            # 2️⃣ Ranking de obras
+            if 'df_ranking' in locals():
+                df_ranking.to_excel(writer, sheet_name="Ranking_Obras", index=False)
+
+            # 3️⃣ Semáforo
+            if 'Nivel de riesgo' in df_ranking.columns:
+                df_ranking[[
+                    "Obra",
+                    "Tipo de obra",
+                    "Índice de vulnerabilidad",
+                    "Nivel de riesgo"
+                ]].to_excel(writer, sheet_name="Semaforo_Riesgo", index=False)
+
+            # 4️⃣ Horarios críticos
+            if 'df_horario' in locals():
+                df_horario.to_excel(writer, sheet_name="Horarios_Criticos", index=False)
+
+            # 5️⃣ Comparativo mensual
+            if 'mensual' in locals():
+                mensual.to_excel(writer, sheet_name="Comparativo_Mensual", index=False)
+
+        with open(archivo_excel, "rb") as f:
+            st.download_button(
+                label="📊 Descargar archivo Excel",
+                data=f,
+                file_name="robos_analisis.xlsx",
+                mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+            )
+
+        st.success("Archivo Excel generado correctamente. Listo para Power BI.")
+
+else:
+    st.info("No hay datos para exportar.")
 
 
