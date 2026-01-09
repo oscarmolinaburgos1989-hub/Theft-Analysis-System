@@ -54,7 +54,7 @@ DB_FILE = "robos_db.csv"
 COLUMNAS = [
     "fecha", "hora",
     "tipo_obra", "obra",
-    "sector", "contratista", "partida",
+    "sector", "partida",
     "zona_vulnerada",
     "tipo_robo", "detalle", "cantidad",
     "costo_directo", "dias_atraso",
