@@ -17,14 +17,14 @@ OBRAS_EDIFICIOS = [
     "San Damián",
     "Doña Matilde",
     "Parque Norte",
-    "Vista a la Viña",
-    "Don Clemente",
-    "Tejas Verdes",
-    "Cumbres del Retiro Sur B",
-    "Lomas Verdes"
+    "Vista a la Viña"
 ]
 
 OBRAS_CASAS = [
+    "Tejas Verdes",
+    "Don Clemente",
+    "Cumbres del Retiro Sur B",
+    "Lomas Verdes",
     "Kennedy",
     "Machalí",
     "VG Norte",
@@ -42,8 +42,7 @@ OBRAS_CASAS = [
     "Huertos de Chillán",
     "PU Chillán",
     "Coronel",
-    "Junquillar",
-    "Retiro Sur"
+    "Junquillar Retiro Sur"
 ]
 
 # =============================
@@ -54,7 +53,7 @@ DB_FILE = "robos_db.csv"
 COLUMNAS = [
     "fecha", "hora",
     "tipo_obra", "obra",
-    "sector", "partida",
+    "sector", "contratista", "partida",
     "zona_vulnerada",
     "tipo_robo", "detalle", "cantidad",
     "costo_directo", "dias_atraso",
@@ -82,6 +81,7 @@ with tab_edificios:
     with st.form("form_edificios"):
         obra = st.selectbox("Edificio", OBRAS_EDIFICIOS)
         sector = st.text_input("Torre / Piso / Sector")
+        contratista = st.text_input("Contratista responsable")
         partida = st.selectbox("Partida afectada", [
             "Sanitarias", "Eléctricas", "Gas",
             "Terminaciones", "Estructura", "Seguridad", "Otra"
@@ -154,6 +154,7 @@ with tab_casas:
     with st.form("form_casas"):
         obra = st.selectbox("Proyecto de Casas", OBRAS_CASAS)
         sector = st.text_input("Manzana / Lote")
+        contratista = st.text_input("Contratista responsable")
         partida = st.selectbox("Partida afectada", [
             "Sanitarias", "Eléctricas", "Gas",
             "Terminaciones", "Estructura", "Seguridad", "Otra"
@@ -197,6 +198,7 @@ with tab_casas:
                 "tipo_obra": "Casas",
                 "obra": obra,
                 "sector": sector,
+                "contratista": contratista,
                 "partida": partida,
                 "zona_vulnerada": zona,
                 "tipo_robo": tipo_robo,
@@ -237,5 +239,7 @@ if len(df_db) > 0:
         st.subheader("💰 Impacto económico por obra")
         st.bar_chart(df_db.groupby("obra")["costo_directo"].sum())
 
-        
+        st.subheader("👷 Impacto por contratista")
+        st.bar_chart(df_db.groupby("contratista")["costo_directo"].sum())
+
 
