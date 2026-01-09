@@ -241,5 +241,72 @@ if len(df_db) > 0:
 
         st.subheader("👷 Impacto por contratista")
         st.bar_chart(df_db.groupby("contratista")["costo_directo"].sum())
+# =============================
+# RANKING DE OBRAS MÁS VULNERABLES
+# =============================
+st.markdown("---")
+st.header("🚨 Ranking de obras más vulnerables")
+
+if len(df_db) > 0:
+
+    ranking = []
+
+    for obra in df_db["obra"].unique():
+        df_obra = df_db[df_db["obra"] == obra]
+
+        n_robos = len(df_obra)
+        monto_total = df_obra["costo_directo"].sum()
+        dias_atraso = df_obra["dias_atraso"].sum()
+        costo_mo = df_obra["costo_mano_obra"].sum()
+
+        fallas_seguridad = df_obra[
+            (df_obra["camara_alerto"] == "No") |
+            (df_obra["guardia_detecto"] == "No")
+        ].shape[0]
+
+        puntaje = (
+            n_robos * 2 +
+            (monto_total / 1_000_000) +
+            (dias_atraso * 1.5) +
+            (costo_mo / 1_000_000) +
+            (fallas_seguridad * 5)
+        )
+
+        ranking.append({
+            "Obra": obra,
+            "Tipo de obra": df_obra["tipo_obra"].iloc[0],
+            "Robos": n_robos,
+            "Monto robado ($)": round(monto_total),
+            "Días de atraso": dias_atraso,
+            "Costo mano de obra ($)": round(costo_mo),
+            "Fallas de seguridad": fallas_seguridad,
+            "Índice de vulnerabilidad": round(puntaje, 2)
+        })
+
+    df_ranking = pd.DataFrame(ranking).sort_values(
+        "Índice de vulnerabilidad", ascending=False
+    )
+
+    st.dataframe(df_ranking, use_container_width=True)
+
+    st.subheader("📊 Visualización del ranking")
+    st.bar_chart(
+        df_ranking.set_index("Obra")["Índice de vulnerabilidad"]
+    )
+
+    # Interpretación automática
+    st.subheader("🧠 Interpretación automática")
+    obra_critica = df_ranking.iloc[0]
+
+    st.warning(
+        f"La obra **{obra_critica['Obra']}** presenta el mayor nivel de vulnerabilidad. "
+        f"Registra {obra_critica['Robos']} robos, "
+        f"un monto acumulado de ${obra_critica['Monto robado ($)']:,}, "
+        f"{obra_critica['Fallas de seguridad']} eventos con fallas de seguridad "
+        f"y un índice de vulnerabilidad de {obra_critica['Índice de vulnerabilidad']}."
+    )
+
+else:
+    st.info("No hay datos suficientes para generar el ranking.")
 
 
