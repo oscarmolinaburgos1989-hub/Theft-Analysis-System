@@ -197,7 +197,6 @@ with tab_casas:
                 "tipo_obra": "Casas",
                 "obra": obra,
                 "sector": sector,
-                "contratista": contratista,
                 "partida": partida,
                 "zona_vulnerada": zona,
                 "tipo_robo": tipo_robo,
