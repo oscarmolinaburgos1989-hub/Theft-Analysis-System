@@ -237,6 +237,5 @@ if len(df_db) > 0:
         st.subheader("💰 Impacto económico por obra")
         st.bar_chart(df_db.groupby("obra")["costo_directo"].sum())
 
-        st.subheader("👷 Impacto por contratista")
-        st.bar_chart(df_db.groupby("contratista")["costo_directo"].sum())
+        
 
