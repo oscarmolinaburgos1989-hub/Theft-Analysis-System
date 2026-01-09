@@ -1,11 +1,5 @@
 import streamlit as st
 import re
-from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer
-from reportlab.lib.styles import getSampleStyleSheet
-from reportlab.lib.pagesizes import A4
-from reportlab.lib.units import cm
-import tempfile
-import os
 
 # =============================
 # CONFIGURACIÓN GENERAL
@@ -16,7 +10,7 @@ st.set_page_config(
 )
 
 st.title("📊 Sistema corporativo de análisis de impacto por robo en obra")
-st.write("Cálculo rápido, detallado y defendible + Informe PDF ejecutivo")
+st.write("Cálculo rápido, detallado y defendible del costo real del robo")
 st.markdown("---")
 
 # =============================
@@ -45,9 +39,9 @@ def reconocer_producto(texto):
 # =============================
 st.header("1️⃣ Parámetros económicos del proyecto")
 
-valor_vivienda = st.number_input("Valor promedio por vivienda ($)", 71_000_000, step=1_000_000)
-costo_dia_obra = st.number_input("Costo diario total de obra ($)", 2_500_000, step=100_000)
-costo_mano_obra = st.number_input("Costo diario mano de obra ($)", 1_200_000, step=50_000)
+valor_vivienda = st.number_input("Valor promedio por vivienda ($)", 71000000, step=1000000)
+costo_dia_obra = st.number_input("Costo diario total de obra ($)", 2500000, step=100000)
+costo_mano_obra = st.number_input("Costo diario mano de obra ($)", 1200000, step=50000)
 tasa_capital = st.number_input("Costo de capital anual (%)", 10.0) / 100
 pago_final = st.number_input("Pago final retenido (%)", 20.0) / 100
 
@@ -71,7 +65,7 @@ clave, desc, unidad, pmin, pmax, pref = reconocer_producto(detalle)
 st.markdown("### 🔎 Reconocimiento automático")
 st.write(f"""
 Producto identificado: **{desc}**  
-Unidad considerada: **{unidad}**  
+Unidad: **{unidad}**  
 Rango mercado Chile: **${pmin:,} – ${pmax:,}**
 """)
 
@@ -79,7 +73,7 @@ precio_unitario = st.number_input("Precio unitario de referencia ($)", pref, ste
 costo_directo = cantidad * precio_unitario
 
 # =============================
-# CÁLCULO
+# CÁLCULO FINAL
 # =============================
 if st.button("🧮 Calcular impacto real"):
 
@@ -88,103 +82,50 @@ if st.button("🧮 Calcular impacto real"):
 
     if viviendas_afectadas > 0:
         capital_inmovilizado = viviendas_afectadas * valor_vivienda * pago_final
-        impacto_financiero = capital_inmovilizado * (tasa_capital / 365) * dias_atraso
+        impacto_comercial = capital_inmovilizado * (tasa_capital / 365) * dias_atraso
+        impacto_financiero = impacto_comercial
     else:
+        impacto_comercial = impacto_financiero = 0
         capital_inmovilizado = 0
-        impacto_financiero = 0
 
-    impacto_total = costo_directo + impacto_obra + impacto_mo + impacto_financiero
+    impacto_total = costo_directo + impacto_obra + impacto_mo + impacto_comercial
 
-    st.markdown("## 📑 Informe técnico resumido")
-    st.metric("Costo directo del robo", f"${costo_directo:,.0f}")
+    # =============================
+    # INFORME EXPLICADO
+    # =============================
+    st.markdown("## 📑 Informe técnico detallado")
+
+    st.markdown("### 1️⃣ Costo directo del robo")
+    st.write(f"""
+Se reconoce **{desc}** a partir del texto ingresado.  
+El precio unitario se define usando referencias del mercado chileno.  
+Costo directo = {cantidad} × ${precio_unitario:,.0f}
+""")
+    st.metric("Costo directo", f"${costo_directo:,.0f}")
+
+    st.markdown("### 2️⃣ Impacto operativo")
+    st.write(f"""
+El robo genera un atraso de **{dias_atraso} días**.
+Cada día de obra cuesta **${costo_dia_obra:,.0f}**.
+""")
     st.metric("Impacto por atraso de obra", f"${impacto_obra:,.0f}")
+
+    st.markdown("### 3️⃣ Impacto mano de obra")
+    st.write(f"""
+Durante el atraso, la empresa mantiene personal y contratistas activos.
+Costo diario mano de obra = **${costo_mano_obra:,.0f}**.
+""")
     st.metric("Impacto mano de obra", f"${impacto_mo:,.0f}")
+
+    st.markdown("### 4️⃣ Impacto financiero")
+    st.write(f"""
+El atraso inmoviliza pagos finales por **${capital_inmovilizado:,.0f}**.
+Se aplica una tasa anual de **{tasa_capital*100:.1f}%**, prorrateada por días.
+""")
     st.metric("Impacto financiero", f"${impacto_financiero:,.0f}")
-    st.metric("💥 Impacto económico total", f"${impacto_total:,.0f}")
 
-    # =============================
-    # GENERACIÓN PDF
-    # =============================
-    if st.button("📄 Descargar informe PDF ejecutivo"):
-        tmp = tempfile.NamedTemporaryFile(delete=False, suffix=".pdf")
-        doc = SimpleDocTemplate(tmp.name, pagesize=A4,
-                                rightMargin=2*cm, leftMargin=2*cm,
-                                topMargin=2*cm, bottomMargin=2*cm)
+    st.markdown("---")
+    st.metric("💥 IMPACTO ECONÓMICO TOTAL REAL", f"${impacto_total:,.0f}")
 
-        styles = getSampleStyleSheet()
-        content = []
-
-        content.append(Paragraph("<b>INFORME EJECUTIVO – IMPACTO POR ROBO EN OBRA</b>", styles["Title"]))
-        content.append(Spacer(1, 12))
-
-        content.append(Paragraph("<b>1. Descripción del evento</b>", styles["Heading2"]))
-        content.append(Paragraph(
-            f"Detalle del robo: {detalle}<br/>"
-            f"Cantidad: {cantidad} {unidad}<br/>"
-            f"Días de atraso: {dias_atraso}", styles["Normal"]
-        ))
-
-        content.append(Spacer(1, 12))
-        content.append(Paragraph("<b>2. Costo directo del robo</b>", styles["Heading2"]))
-        content.append(Paragraph(
-            f"El producto identificado corresponde a {desc}. "
-            f"El valor unitario de referencia es ${precio_unitario:,.0f}, "
-            f"obtenido desde referencias del mercado chileno. "
-            f"El costo directo total del robo asciende a ${costo_directo:,.0f}.",
-            styles["Normal"]
-        ))
-
-        content.append(Spacer(1, 12))
-        content.append(Paragraph("<b>3. Impacto operativo</b>", styles["Heading2"]))
-        content.append(Paragraph(
-            f"El robo genera un atraso de {dias_atraso} días. "
-            f"El costo diario total de la obra es ${costo_dia_obra:,.0f}, "
-            f"lo que genera un impacto operativo de ${impacto_obra:,.0f}.",
-            styles["Normal"]
-        ))
-
-        content.append(Spacer(1, 12))
-        content.append(Paragraph("<b>4. Impacto mano de obra</b>", styles["Heading2"]))
-        content.append(Paragraph(
-            f"Durante el atraso, se mantienen costos de personal y contratistas "
-            f"por ${costo_mano_obra:,.0f} diarios, generando un impacto de "
-            f"${impacto_mo:,.0f}.",
-            styles["Normal"]
-        ))
-
-        content.append(Spacer(1, 12))
-        content.append(Paragraph("<b>5. Impacto financiero</b>", styles["Heading2"]))
-        content.append(Paragraph(
-            f"El atraso inmoviliza capital asociado a pagos finales por "
-            f"${capital_inmovilizado:,.0f}. Aplicando una tasa de costo de capital "
-            f"anual de {tasa_capital*100:.1f}%, el impacto financiero asciende a "
-            f"${impacto_financiero:,.0f}.",
-            styles["Normal"]
-        ))
-
-        content.append(Spacer(1, 12))
-        content.append(Paragraph("<b>IMPACTO ECONÓMICO TOTAL</b>", styles["Heading2"]))
-        content.append(Paragraph(
-            f"El impacto económico total real del evento se estima en "
-            f"<b>${impacto_total:,.0f}</b>.",
-            styles["Normal"]
-        ))
-
-        content.append(Spacer(1, 18))
-        content.append(Paragraph(
-            "Este informe corresponde a una estimación técnica basada en "
-            "referencias públicas del mercado chileno y parámetros económicos "
-            "definidos para el proyecto. No constituye cotización formal.",
-            styles["Italic"]
-        ))
-
-        doc.build(content)
-        st.download_button(
-            label="⬇️ Descargar PDF",
-            data=open(tmp.name, "rb").read(),
-            file_name="Informe_Impacto_Robo_Obra.pdf",
-            mime="application/pdf"
-        )
-
-        os.unlink(tmp.name)
+    st.info("Informe basado en estimaciones técnicas y referencias públicas de mercado chileno.")
 
