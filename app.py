@@ -426,5 +426,73 @@ if len(df_db) > 0:
 
 else:
     st.info("No hay datos suficientes para analizar horarios críticos.")
+# =============================
+# COMPARATIVO SEMANAL Y MENSUAL
+# =============================
+st.markdown("---")
+st.header("📅 Comparativo semanal y mensual de robos")
+
+if len(df_db) > 0:
+
+    # Asegurar fecha como datetime
+    df_db["fecha"] = pd.to_datetime(df_db["fecha"])
+
+    # Crear columnas de período
+    df_db["Año"] = df_db["fecha"].dt.year
+    df_db["Semana"] = df_db["fecha"].dt.isocalendar().week
+    df_db["Mes"] = df_db["fecha"].dt.month
+
+    # -----------------------------
+    # COMPARATIVO SEMANAL
+    # -----------------------------
+    st.subheader("📆 Evolución semanal")
+
+    semanal = df_db.groupby(["Año", "Semana"]).agg({
+        "costo_directo": "sum",
+        "dias_atraso": "sum",
+        "costo_mano_obra": "sum",
+        "obra": "count"
+    }).rename(columns={"obra": "Robos"}).reset_index()
+
+    semanal["Periodo"] = "S" + semanal["Semana"].astype(str)
+
+    st.dataframe(semanal, use_container_width=True)
+    st.line_chart(semanal.set_index("Periodo")[["Robos", "costo_directo"]])
+
+    # -----------------------------
+    # COMPARATIVO MENSUAL
+    # -----------------------------
+    st.subheader("🗓️ Evolución mensual")
+
+    mensual = df_db.groupby(["Año", "Mes"]).agg({
+        "costo_directo": "sum",
+        "dias_atraso": "sum",
+        "costo_mano_obra": "sum",
+        "obra": "count"
+    }).rename(columns={"obra": "Robos"}).reset_index()
+
+    mensual["Periodo"] = mensual["Mes"].apply(lambda x: f"Mes {x}")
+
+    st.dataframe(mensual, use_container_width=True)
+    st.line_chart(mensual.set_index("Periodo")[["Robos", "costo_directo"]])
+
+    # -----------------------------
+    # CONCLUSIÓN AUTOMÁTICA
+    # -----------------------------
+    st.subheader("🧠 Interpretación automática")
+
+    if len(mensual) >= 2:
+        ult = mensual.iloc[-1]
+        ant = mensual.iloc[-2]
+
+        variacion = ((ult["costo_directo"] - ant["costo_directo"]) / max(ant["costo_directo"], 1)) * 100
+
+        if variacion > 10:
+            st.error(
+                f"El impacto económico del último mes aumentó un **{variacion:.1f}%** "
+                f"respecto al mes anterior. Se recomienda reforzar medidas preventivas."
+            )
+        elif variacion < -10:
+            st.success
 
 
