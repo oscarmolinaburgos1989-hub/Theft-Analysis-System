@@ -17,14 +17,14 @@ OBRAS_EDIFICIOS = [
     "San Damián",
     "Doña Matilde",
     "Parque Norte",
-    "Vista a la Viña"
+    "Vista a la Viña",
+    "Don Clemente",
+    "Tejas Verdes",
+    "Cumbres del Retiro Sur B",
+    "Lomas Verdes"
 ]
 
 OBRAS_CASAS = [
-    "Tejas Verdes",
-    "Don Clemente",
-    "Cumbres del Retiro Sur B",
-    "Lomas Verdes",
     "Kennedy",
     "Machalí",
     "VG Norte",
