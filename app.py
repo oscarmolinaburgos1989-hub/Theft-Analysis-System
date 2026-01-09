@@ -7,7 +7,7 @@ import os
 # =============================
 st.set_page_config(page_title="Inteligencia de Robos en Obras", layout="wide")
 st.title("🔐 Sistema de Inteligencia y Análisis de Robos en Obras")
-st.write("Registro y análisis histórico de robos en Edificios y Casas")
+st.write("Registro, análisis y exportación de robos en Edificios y Casas")
 st.markdown("---")
 
 # =============================
@@ -18,13 +18,13 @@ OBRAS_EDIFICIOS = [
     "Doña Matilde",
     "Parque Norte",
     "Vista a la Viña"
-]
-
-OBRAS_CASAS = [
     "Tejas Verdes",
     "Don Clemente",
     "Cumbres del Retiro Sur B",
     "Lomas Verdes",
+]
+
+OBRAS_CASAS = [
     "Kennedy",
     "Machalí",
     "VG Norte",
@@ -53,11 +53,11 @@ DB_FILE = "robos_db.csv"
 COLUMNAS = [
     "fecha", "hora",
     "tipo_obra", "obra",
-    "sector", "contratista", "partida",
+    "sector", "partida",
     "zona_vulnerada",
     "tipo_robo", "detalle", "cantidad",
     "costo_directo", "dias_atraso",
-    "costo_atraso", "costo_mano_obra",
+    "costo_mano_obra",
     "camara_activa", "camara_alerto",
     "guardia_presente", "guardia_detecto"
 ]
@@ -68,20 +68,19 @@ if not os.path.exists(DB_FILE):
 df_db = pd.read_csv(DB_FILE)
 
 # =============================
-# PESTAÑAS PRINCIPALES
+# PESTAÑAS
 # =============================
-tab_edificios, tab_casas = st.tabs(["🏢 Edificios", "🏘️ Casas"])
+tab_edif, tab_casas = st.tabs(["🏢 Edificios", "🏘️ Casas"])
 
 # =====================================================
-# PESTAÑA EDIFICIOS
+# EDIFICIOS
 # =====================================================
-with tab_edificios:
+with tab_edif:
     st.header("🏢 Registro de robo – Edificios")
 
     with st.form("form_edificios"):
         obra = st.selectbox("Edificio", OBRAS_EDIFICIOS)
         sector = st.text_input("Torre / Piso / Sector")
-        contratista = st.text_input("Contratista responsable")
         partida = st.selectbox("Partida afectada", [
             "Sanitarias", "Eléctricas", "Gas",
             "Terminaciones", "Estructura", "Seguridad", "Otra"
@@ -101,31 +100,27 @@ with tab_edificios:
                 "Terminaciones",
                 "Otros"
             ])
-            detalle = st.text_area("Detalle de lo robado")
+            detalle = st.text_area("Detalle del robo")
 
-        cantidad = st.number_input("Cantidad robada", min_value=1, value=1)
-
-        col3, col4, col5 = st.columns(3)
+        cantidad = st.number_input("Cantidad robada", 1)
+        col3, col4 = st.columns(2)
         costo_directo = col3.number_input("Costo directo ($)", step=10000)
-        dias_atraso = col4.number_input("Días de atraso", min_value=0, value=0)
-        costo_mo = col5.number_input("Costo mano de obra ($)", step=10000)
+        dias_atraso = col4.number_input("Días de atraso", 0)
+        costo_mo = st.number_input("Costo mano de obra ($)", step=10000)
 
         st.subheader("🔒 Seguridad")
         camara_activa = st.selectbox("¿Cámaras activas?", ["Sí", "No"])
         camara_alerto = st.selectbox("¿Cámaras alertaron?", ["Sí", "No"])
         guardia_presente = st.selectbox("¿Había guardia?", ["Sí", "No"])
-        guardia_detecto = st.selectbox("¿Guardia detectó el robo?", ["Sí", "No"])
+        guardia_detecto = st.selectbox("¿Guardia detectó?", ["Sí", "No"])
 
-        guardar = st.form_submit_button("💾 Guardar robo en Edificios")
-
-        if guardar:
+        if st.form_submit_button("💾 Guardar robo"):
             nuevo = pd.DataFrame([{
                 "fecha": fecha,
                 "hora": hora.strftime("%H:%M"),
                 "tipo_obra": "Edificio",
                 "obra": obra,
                 "sector": sector,
-                "contratista": contratista,
                 "partida": partida,
                 "zona_vulnerada": zona,
                 "tipo_robo": tipo_robo,
@@ -133,7 +128,6 @@ with tab_edificios:
                 "cantidad": cantidad,
                 "costo_directo": costo_directo,
                 "dias_atraso": dias_atraso,
-                "costo_atraso": 0,
                 "costo_mano_obra": costo_mo,
                 "camara_activa": camara_activa,
                 "camara_alerto": camara_alerto,
@@ -143,10 +137,10 @@ with tab_edificios:
 
             df_db = pd.concat([df_db, nuevo], ignore_index=True)
             df_db.to_csv(DB_FILE, index=False)
-            st.success("✅ Robo registrado en Edificios")
+            st.success("Robo registrado correctamente")
 
 # =====================================================
-# PESTAÑA CASAS
+# CASAS
 # =====================================================
 with tab_casas:
     st.header("🏘️ Registro de robo – Casas")
@@ -154,7 +148,6 @@ with tab_casas:
     with st.form("form_casas"):
         obra = st.selectbox("Proyecto de Casas", OBRAS_CASAS)
         sector = st.text_input("Manzana / Lote")
-        contratista = st.text_input("Contratista responsable")
         partida = st.selectbox("Partida afectada", [
             "Sanitarias", "Eléctricas", "Gas",
             "Terminaciones", "Estructura", "Seguridad", "Otra"
@@ -162,9 +155,9 @@ with tab_casas:
 
         col1, col2 = st.columns(2)
         with col1:
-            fecha = st.date_input("Fecha del robo", key="fecha_c")
-            hora = st.time_input("Hora aproximada", key="hora_c")
-            zona = st.selectbox("Zona vulnerada", ["Bodega", "Acceso", "Cerco", "Interior", "Otro"], key="zona_c")
+            fecha = st.date_input("Fecha del robo", key="fc")
+            hora = st.time_input("Hora aproximada", key="hc")
+            zona = st.selectbox("Zona vulnerada", ["Bodega", "Acceso", "Cerco", "Interior", "Otro"], key="zc")
         with col2:
             tipo_robo = st.selectbox("Tipo de material robado", [
                 "Instalaciones sanitarias",
@@ -173,32 +166,28 @@ with tab_casas:
                 "Maquinaria",
                 "Terminaciones",
                 "Otros"
-            ], key="tipo_robo_c")
-            detalle = st.text_area("Detalle de lo robado", key="detalle_c")
+            ], key="trc")
+            detalle = st.text_area("Detalle del robo", key="dc")
 
-        cantidad = st.number_input("Cantidad robada", min_value=1, value=1, key="cantidad_c")
-
-        col3, col4, col5 = st.columns(3)
-        costo_directo = col3.number_input("Costo directo ($)", step=10000, key="cd_c")
-        dias_atraso = col4.number_input("Días de atraso", min_value=0, value=0, key="da_c")
-        costo_mo = col5.number_input("Costo mano de obra ($)", step=10000, key="mo_c")
+        cantidad = st.number_input("Cantidad robada", 1, key="qc")
+        col3, col4 = st.columns(2)
+        costo_directo = col3.number_input("Costo directo ($)", step=10000, key="cdc")
+        dias_atraso = col4.number_input("Días de atraso", 0, key="dac")
+        costo_mo = st.number_input("Costo mano de obra ($)", step=10000, key="moc")
 
         st.subheader("🔒 Seguridad")
-        camara_activa = st.selectbox("¿Cámaras activas?", ["Sí", "No"], key="ca_c")
-        camara_alerto = st.selectbox("¿Cámaras alertaron?", ["Sí", "No"], key="cal_c")
-        guardia_presente = st.selectbox("¿Había guardia?", ["Sí", "No"], key="gp_c")
-        guardia_detecto = st.selectbox("¿Guardia detectó el robo?", ["Sí", "No"], key="gd_c")
+        camara_activa = st.selectbox("¿Cámaras activas?", ["Sí", "No"], key="cac")
+        camara_alerto = st.selectbox("¿Cámaras alertaron?", ["Sí", "No"], key="clc")
+        guardia_presente = st.selectbox("¿Había guardia?", ["Sí", "No"], key="gpc")
+        guardia_detecto = st.selectbox("¿Guardia detectó?", ["Sí", "No"], key="gdc")
 
-        guardar = st.form_submit_button("💾 Guardar robo en Casas")
-
-        if guardar:
+        if st.form_submit_button("💾 Guardar robo"):
             nuevo = pd.DataFrame([{
                 "fecha": fecha,
                 "hora": hora.strftime("%H:%M"),
                 "tipo_obra": "Casas",
                 "obra": obra,
                 "sector": sector,
-                "contratista": contratista,
                 "partida": partida,
                 "zona_vulnerada": zona,
                 "tipo_robo": tipo_robo,
@@ -206,7 +195,6 @@ with tab_casas:
                 "cantidad": cantidad,
                 "costo_directo": costo_directo,
                 "dias_atraso": dias_atraso,
-                "costo_atraso": 0,
                 "costo_mano_obra": costo_mo,
                 "camara_activa": camara_activa,
                 "camara_alerto": camara_alerto,
@@ -216,334 +204,26 @@ with tab_casas:
 
             df_db = pd.concat([df_db, nuevo], ignore_index=True)
             df_db.to_csv(DB_FILE, index=False)
-            st.success("✅ Robo registrado en Casas")
+            st.success("Robo registrado correctamente")
 
 # =============================
-# ANÁLISIS GENERAL
-# =============================
-st.markdown("---")
-st.header("📊 Análisis general")
-
-if len(df_db) > 0:
-    df_db["hora"] = pd.to_datetime(df_db["hora"], format="%H:%M").dt.hour
-
-    colA, colB = st.columns(2)
-    with colA:
-        st.subheader("🏢 vs 🏘️ Cantidad de robos")
-        st.bar_chart(df_db["tipo_obra"].value_counts())
-
-        st.subheader("⏰ Horas más frecuentes")
-        st.bar_chart(df_db["hora"].value_counts().sort_index())
-
-    with colB:
-        st.subheader("💰 Impacto económico por obra")
-        st.bar_chart(df_db.groupby("obra")["costo_directo"].sum())
-
-        st.subheader("👷 Impacto por contratista")
-        st.bar_chart(df_db.groupby("contratista")["costo_directo"].sum())
-# =============================
-# RANKING DE OBRAS MÁS VULNERABLES
-# =============================
-st.markdown("---")
-st.header("🚨 Ranking de obras más vulnerables")
-
-if len(df_db) > 0:
-
-    ranking = []
-
-    for obra in df_db["obra"].unique():
-        df_obra = df_db[df_db["obra"] == obra]
-
-        n_robos = len(df_obra)
-        monto_total = df_obra["costo_directo"].sum()
-        dias_atraso = df_obra["dias_atraso"].sum()
-        costo_mo = df_obra["costo_mano_obra"].sum()
-
-        fallas_seguridad = df_obra[
-            (df_obra["camara_alerto"] == "No") |
-            (df_obra["guardia_detecto"] == "No")
-        ].shape[0]
-
-        puntaje = (
-            n_robos * 2 +
-            (monto_total / 1_000_000) +
-            (dias_atraso * 1.5) +
-            (costo_mo / 1_000_000) +
-            (fallas_seguridad * 5)
-        )
-
-        ranking.append({
-            "Obra": obra,
-            "Tipo de obra": df_obra["tipo_obra"].iloc[0],
-            "Robos": n_robos,
-            "Monto robado ($)": round(monto_total),
-            "Días de atraso": dias_atraso,
-            "Costo mano de obra ($)": round(costo_mo),
-            "Fallas de seguridad": fallas_seguridad,
-            "Índice de vulnerabilidad": round(puntaje, 2)
-        })
-
-    df_ranking = pd.DataFrame(ranking).sort_values(
-        "Índice de vulnerabilidad", ascending=False
-    )
-
-    st.dataframe(df_ranking, use_container_width=True)
-
-    st.subheader("📊 Visualización del ranking")
-    st.bar_chart(
-        df_ranking.set_index("Obra")["Índice de vulnerabilidad"]
-    )
-
-    # Interpretación automática
-    st.subheader("🧠 Interpretación automática")
-    obra_critica = df_ranking.iloc[0]
-
-    st.warning(
-        f"La obra **{obra_critica['Obra']}** presenta el mayor nivel de vulnerabilidad. "
-        f"Registra {obra_critica['Robos']} robos, "
-        f"un monto acumulado de ${obra_critica['Monto robado ($)']:,}, "
-        f"{obra_critica['Fallas de seguridad']} eventos con fallas de seguridad "
-        f"y un índice de vulnerabilidad de {obra_critica['Índice de vulnerabilidad']}."
-    )
-
-else:
-    st.info("No hay datos suficientes para generar el ranking.")
-# =============================
-# SEMÁFORO DE RIESGO POR OBRA
-# =============================
-st.markdown("---")
-st.header("🚦 Semáforo de riesgo por obra")
-
-if len(df_ranking) > 0:
-
-    promedio_indice = df_ranking["Índice de vulnerabilidad"].mean()
-
-    def clasificar_riesgo(indice, promedio):
-        if indice < promedio * 0.7:
-            return "🟢 Bajo"
-        elif indice <= promedio * 1.3:
-            return "🟡 Medio"
-        else:
-            return "🔴 Crítico"
-
-    df_ranking["Nivel de riesgo"] = df_ranking["Índice de vulnerabilidad"].apply(
-        lambda x: clasificar_riesgo(x, promedio_indice)
-    )
-
-    st.dataframe(
-        df_ranking[[
-            "Obra",
-            "Tipo de obra",
-            "Índice de vulnerabilidad",
-            "Nivel de riesgo"
-        ]],
-        use_container_width=True
-    )
-
-    # Conteo visual
-    st.subheader("📊 Distribución de riesgo")
-    st.bar_chart(df_ranking["Nivel de riesgo"].value_counts())
-
-    # Mensaje ejecutivo automático
-    st.subheader("🧠 Conclusión ejecutiva")
-    criticas = df_ranking[df_ranking["Nivel de riesgo"] == "🔴 Crítico"]
-
-    if len(criticas) > 0:
-        st.error(
-            f"Se identifican **{len(criticas)} obras en nivel CRÍTICO**, "
-            f"las cuales concentran un riesgo significativamente superior al promedio. "
-            f"Se recomienda intervención inmediata en seguridad, control de accesos "
-            f"y vigilancia."
-        )
-    else:
-        st.success(
-            "No se detectan obras en nivel crítico. "
-            "El riesgo general se mantiene dentro de rangos controlados."
-        )
-
-else:
-    st.info("Primero debe generarse el ranking de obras.")
-# =============================
-# PREDICCIÓN DE HORARIOS CRÍTICOS
-# =============================
-st.markdown("---")
-st.header("⏰ Predicción de horarios críticos de robo")
-
-if len(df_db) > 0:
-
-    # Asegurar hora como entero
-    df_db["hora"] = pd.to_datetime(df_db["hora"], format="%H:%M").dt.hour
-
-    riesgo_horario = []
-
-    for hora in range(24):
-        df_h = df_db[df_db["hora"] == hora]
-
-        if len(df_h) == 0:
-            continue
-
-        n_robos = len(df_h)
-        monto = df_h["costo_directo"].sum()
-        fallas = df_h[
-            (df_h["camara_alerto"] == "No") |
-            (df_h["guardia_detecto"] == "No")
-        ].shape[0]
-
-        indice = (
-            n_robos * 2 +
-            (monto / 1_000_000) +
-            (fallas * 3)
-        )
-
-        riesgo_horario.append({
-            "Hora": f"{hora:02d}:00",
-            "Robos": n_robos,
-            "Monto robado ($)": round(monto),
-            "Fallas de seguridad": fallas,
-            "Índice de riesgo": round(indice, 2)
-        })
-
-    df_horario = pd.DataFrame(riesgo_horario).sort_values(
-        "Índice de riesgo", ascending=False
-    )
-
-    st.subheader("📊 Ranking de horas más riesgosas")
-    st.dataframe(df_horario, use_container_width=True)
-
-    st.subheader("📈 Visualización del riesgo horario")
-    st.bar_chart(df_horario.set_index("Hora")["Índice de riesgo"])
-
-    # Conclusión automática
-    hora_critica = df_horario.iloc[0]
-
-    st.warning(
-        f"La franja horaria **{hora_critica['Hora']}** presenta el mayor nivel de riesgo. "
-        f"Concentra {hora_critica['Robos']} robos, "
-        f"un monto acumulado de ${hora_critica['Monto robado ($)']:,} "
-        f"y {hora_critica['Fallas de seguridad']} eventos con fallas de seguridad. "
-        f"Se recomienda reforzar vigilancia y controles en este horario."
-    )
-
-else:
-    st.info("No hay datos suficientes para analizar horarios críticos.")
-# =============================
-# COMPARATIVO SEMANAL Y MENSUAL
-# =============================
-st.markdown("---")
-st.header("📅 Comparativo semanal y mensual de robos")
-
-if len(df_db) > 0:
-
-    # Asegurar fecha como datetime
-    df_db["fecha"] = pd.to_datetime(df_db["fecha"])
-
-    # Crear columnas de período
-    df_db["Año"] = df_db["fecha"].dt.year
-    df_db["Semana"] = df_db["fecha"].dt.isocalendar().week
-    df_db["Mes"] = df_db["fecha"].dt.month
-
-    # -----------------------------
-    # COMPARATIVO SEMANAL
-    # -----------------------------
-    st.subheader("📆 Evolución semanal")
-
-    semanal = df_db.groupby(["Año", "Semana"]).agg({
-        "costo_directo": "sum",
-        "dias_atraso": "sum",
-        "costo_mano_obra": "sum",
-        "obra": "count"
-    }).rename(columns={"obra": "Robos"}).reset_index()
-
-    semanal["Periodo"] = "S" + semanal["Semana"].astype(str)
-
-    st.dataframe(semanal, use_container_width=True)
-    st.line_chart(semanal.set_index("Periodo")[["Robos", "costo_directo"]])
-
-    # -----------------------------
-    # COMPARATIVO MENSUAL
-    # -----------------------------
-    st.subheader("🗓️ Evolución mensual")
-
-    mensual = df_db.groupby(["Año", "Mes"]).agg({
-        "costo_directo": "sum",
-        "dias_atraso": "sum",
-        "costo_mano_obra": "sum",
-        "obra": "count"
-    }).rename(columns={"obra": "Robos"}).reset_index()
-
-    mensual["Periodo"] = mensual["Mes"].apply(lambda x: f"Mes {x}")
-
-    st.dataframe(mensual, use_container_width=True)
-    st.line_chart(mensual.set_index("Periodo")[["Robos", "costo_directo"]])
-
-    # -----------------------------
-    # CONCLUSIÓN AUTOMÁTICA
-    # -----------------------------
-    st.subheader("🧠 Interpretación automática")
-
-    if len(mensual) >= 2:
-        ult = mensual.iloc[-1]
-        ant = mensual.iloc[-2]
-
-        variacion = ((ult["costo_directo"] - ant["costo_directo"]) / max(ant["costo_directo"], 1)) * 100
-
-        if variacion > 10:
-            st.error(
-                f"El impacto económico del último mes aumentó un **{variacion:.1f}%** "
-                f"respecto al mes anterior. Se recomienda reforzar medidas preventivas."
-            )
-        elif variacion < -10:
-            st.success
-# =============================
-# EXPORTAR A EXCEL / POWER BI
+# EXPORTACIÓN A EXCEL
 # =============================
 st.markdown("---")
 st.header("📤 Exportación de datos")
 
 if len(df_db) > 0:
+    archivo_excel = "robos_analisis.xlsx"
+    df_db.to_excel(archivo_excel, index=False)
 
-    exportar = st.button("⬇️ Exportar análisis a Excel / Power BI")
-
-    if exportar:
-        archivo_excel = "robos_analisis.xlsx"
-
-        with pd.ExcelWriter(archivo_excel, engine="openpyxl") as writer:
-
-            # 1️⃣ Base completa
-            df_db.to_excel(writer, sheet_name="Base_Robos", index=False)
-
-            # 2️⃣ Ranking de obras
-            if 'df_ranking' in locals():
-                df_ranking.to_excel(writer, sheet_name="Ranking_Obras", index=False)
-
-            # 3️⃣ Semáforo
-            if 'Nivel de riesgo' in df_ranking.columns:
-                df_ranking[[
-                    "Obra",
-                    "Tipo de obra",
-                    "Índice de vulnerabilidad",
-                    "Nivel de riesgo"
-                ]].to_excel(writer, sheet_name="Semaforo_Riesgo", index=False)
-
-            # 4️⃣ Horarios críticos
-            if 'df_horario' in locals():
-                df_horario.to_excel(writer, sheet_name="Horarios_Criticos", index=False)
-
-            # 5️⃣ Comparativo mensual
-            if 'mensual' in locals():
-                mensual.to_excel(writer, sheet_name="Comparativo_Mensual", index=False)
-
-        with open(archivo_excel, "rb") as f:
-            st.download_button(
-                label="📊 Descargar archivo Excel",
-                data=f,
-                file_name="robos_analisis.xlsx",
-                mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
-            )
-
-        st.success("Archivo Excel generado correctamente. Listo para Power BI.")
-
+    with open(archivo_excel, "rb") as f:
+        st.download_button(
+            label="📥 Descargar Excel (Base de Robos)",
+            data=f,
+            file_name="robos_analisis.xlsx",
+            mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+        )
 else:
-    st.info("No hay datos para exportar.")
+    st.info("Aún no hay datos para exportar.")
 
 
