@@ -308,5 +308,60 @@ if len(df_db) > 0:
 
 else:
     st.info("No hay datos suficientes para generar el ranking.")
+# =============================
+# SEMÁFORO DE RIESGO POR OBRA
+# =============================
+st.markdown("---")
+st.header("🚦 Semáforo de riesgo por obra")
+
+if len(df_ranking) > 0:
+
+    promedio_indice = df_ranking["Índice de vulnerabilidad"].mean()
+
+    def clasificar_riesgo(indice, promedio):
+        if indice < promedio * 0.7:
+            return "🟢 Bajo"
+        elif indice <= promedio * 1.3:
+            return "🟡 Medio"
+        else:
+            return "🔴 Crítico"
+
+    df_ranking["Nivel de riesgo"] = df_ranking["Índice de vulnerabilidad"].apply(
+        lambda x: clasificar_riesgo(x, promedio_indice)
+    )
+
+    st.dataframe(
+        df_ranking[[
+            "Obra",
+            "Tipo de obra",
+            "Índice de vulnerabilidad",
+            "Nivel de riesgo"
+        ]],
+        use_container_width=True
+    )
+
+    # Conteo visual
+    st.subheader("📊 Distribución de riesgo")
+    st.bar_chart(df_ranking["Nivel de riesgo"].value_counts())
+
+    # Mensaje ejecutivo automático
+    st.subheader("🧠 Conclusión ejecutiva")
+    criticas = df_ranking[df_ranking["Nivel de riesgo"] == "🔴 Crítico"]
+
+    if len(criticas) > 0:
+        st.error(
+            f"Se identifican **{len(criticas)} obras en nivel CRÍTICO**, "
+            f"las cuales concentran un riesgo significativamente superior al promedio. "
+            f"Se recomienda intervención inmediata en seguridad, control de accesos "
+            f"y vigilancia."
+        )
+    else:
+        st.success(
+            "No se detectan obras en nivel crítico. "
+            "El riesgo general se mantiene dentro de rangos controlados."
+        )
+
+else:
+    st.info("Primero debe generarse el ranking de obras.")
 
 
