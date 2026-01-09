@@ -17,7 +17,7 @@ st.markdown("---")
 OBRAS_EDIFICIOS = [
     "San Damián",
     "Doña Matilde",
-    "Parque Norte"
+    "Parque Norte",
     "Vista a la Viña"
 ]
 
