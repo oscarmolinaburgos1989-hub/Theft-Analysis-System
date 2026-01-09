@@ -1,259 +1,216 @@
 import streamlit as st
 import pandas as pd
 import os
+import smtplib
+from email.message import EmailMessage
+from datetime import datetime
 
 # =============================
 # CONFIGURACIÓN GENERAL
 # =============================
-st.set_page_config(page_title="Inteligencia de Robos en Obras", layout="wide")
-st.title("🔐 Sistema de Inteligencia y Análisis de Robos en Obras")
-st.write("Registro, análisis y exportación de robos en Edificios y Casas")
+st.set_page_config(page_title="Registro de Robos en Obras", layout="wide")
+st.title("🔐 Registro y Control de Robos en Obras (LOCAL)")
+st.caption("Los robos se guardan automáticamente y pueden enviarse por correo")
 st.markdown("---")
+
+# =============================
+# CONFIGURACIÓN DE CORREO
+# =============================
+CORREO_REMITENTE = "TU_CORREO_GMAIL@gmail.com"          # 🔴 CAMBIAR
+CLAVE_APP_GMAIL = "CLAVE_DE_APLICACION_GMAIL"          # 🔴 CAMBIAR
+
+CORREOS_DESTINO = [
+    "cctv@galilea.cl",
+    "oscar.molina@galilea.com"
+]
+
+# =============================
+# RUTA LOCAL
+# =============================
+BASE_DIR = os.path.join(os.path.expanduser("~"), "Documents", "Robos_Obra")
+os.makedirs(BASE_DIR, exist_ok=True)
+
+CSV_PATH = os.path.join(BASE_DIR, "robos_db.csv")
+XLSX_PATH = os.path.join(BASE_DIR, "robos_db.xlsx")
 
 # =============================
 # CATÁLOGO DE OBRAS
 # =============================
 OBRAS_EDIFICIOS = [
-    "San Damián",
-    "Doña Matilde",
-    "Parque Norte",
-    "Vista a la Viña"
-    "Tejas Verdes",
-    "Don Clemente",
-    "Cumbres del Retiro Sur B",
-    "Lomas Verdes",
+    "San Damián", "Doña Matilde", "Parque Norte", "Vista a la Viña"
 ]
 
 OBRAS_CASAS = [
-    "Kennedy",
-    "Machalí",
-    "VG Norte",
-    "Alto Lo Castillo",
-    "Recreo",
-    "Rengo",
-    "Zapallar",
-    "Avellano",
-    "San Miguel",
-    "Doña Antonia",
-    "VG Linares",
-    "Huertos de Linares",
-    "Portones de Linares",
-    "Doña Javiera",
-    "Huertos de Chillán",
-    "PU Chillán",
-    "Coronel",
-    "Junquillar Retiro Sur"
+    "Tejas Verdes", "Don Clemente", "Cumbres del Retiro Sur B",
+    "Lomas Verdes", "Kennedy", "Machalí", "VG Norte",
+    "Alto Lo Castillo", "Recreo", "Rengo", "Zapallar",
+    "Avellano", "San Miguel", "Doña Antonia",
+    "VG Linares", "Huertos de Linares", "Portones de Linares",
+    "Doña Javiera", "Huertos de Chillán", "PU Chillán",
+    "Coronel", "Junquillar Retiro Sur"
 ]
 
 # =============================
 # BASE DE DATOS
 # =============================
-DB_FILE = "robos_db.csv"
-
 COLUMNAS = [
-    "fecha", "hora",
-    "tipo_obra", "obra",
-    "sector", "partida",
-    "zona_vulnerada",
+    "fecha", "hora", "tipo_obra", "obra",
+    "sector", "partida", "zona",
     "tipo_robo", "detalle", "cantidad",
     "costo_directo", "dias_atraso",
-    "costo_mano_obra",
-    "camara_activa", "camara_alerto",
-    "guardia_presente", "guardia_detecto"
+    "costo_mano_obra"
 ]
 
-if not os.path.exists(DB_FILE):
-    pd.DataFrame(columns=COLUMNAS).to_csv(DB_FILE, index=False)
+if os.path.exists(CSV_PATH):
+    df_db = pd.read_csv(CSV_PATH)
+else:
+    df_db = pd.DataFrame(columns=COLUMNAS)
+    df_db.to_csv(CSV_PATH, index=False)
 
-df_db = pd.read_csv(DB_FILE)
+# =============================
+# FUNCIONES
+# =============================
+def guardar_registro(data):
+    global df_db
+    df_db = pd.concat([df_db, pd.DataFrame([data])], ignore_index=True)
+    df_db.to_csv(CSV_PATH, index=False)
+    df_db.to_excel(XLSX_PATH, index=False)
+
+def enviar_excel_por_correo(ruta_excel):
+    try:
+        msg = EmailMessage()
+        msg["Subject"] = "Registro actualizado de robos en obras"
+        msg["From"] = CORREO_REMITENTE
+        msg["To"] = ", ".join(CORREOS_DESTINO)
+
+        msg.set_content(
+            "Se adjunta el registro actualizado de robos en obras.\n\n"
+            "Este correo fue enviado manualmente desde el sistema local."
+        )
+
+        with open(ruta_excel, "rb") as f:
+            msg.add_attachment(
+                f.read(),
+                maintype="application",
+                subtype="vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+                filename="robos_db.xlsx"
+            )
+
+        with smtplib.SMTP_SSL("smtp.gmail.com", 465) as smtp:
+            smtp.login(CORREO_REMITENTE, CLAVE_APP_GMAIL)
+            smtp.send_message(msg)
+
+        return True
+
+    except Exception as e:
+        return str(e)
 
 # =============================
 # PESTAÑAS
 # =============================
-tab_edif, tab_casas = st.tabs(["🏢 Edificios", "🏘️ Casas"])
+tab1, tab2 = st.tabs(["🏢 Edificios", "🏘️ Casas"])
 
-# =====================================================
+# =============================
 # EDIFICIOS
-# =====================================================
-with tab_edif:
+# =============================
+with tab1:
     st.header("🏢 Registro de robo – Edificios")
 
     with st.form("form_edificios"):
         obra = st.selectbox("Edificio", OBRAS_EDIFICIOS)
         sector = st.text_input("Torre / Piso / Sector")
-        partida = st.selectbox("Partida afectada", [
-            "Sanitarias", "Eléctricas", "Gas",
-            "Terminaciones", "Estructura", "Seguridad", "Otra"
-        ])
+        partida = st.text_input("Partida afectada")
+        zona = st.text_input("Zona vulnerada")
+        tipo_robo = st.text_input("Tipo de material robado")
+        detalle = st.text_area("Detalle del robo")
 
-        col1, col2 = st.columns(2)
-        with col1:
-            fecha = st.date_input("Fecha del robo")
-            hora = st.time_input("Hora aproximada")
-            zona = st.selectbox("Zona vulnerada", ["Bodega", "Acceso", "Cerco", "Interior", "Otro"])
-        with col2:
-            tipo_robo = st.selectbox("Tipo de material robado", [
-                "Instalaciones sanitarias",
-                "Instalaciones eléctricas",
-                "Herramientas",
-                "Maquinaria",
-                "Terminaciones",
-                "Otros"
-            ])
-            detalle = st.text_area("Detalle del robo")
+        col1, col2, col3 = st.columns(3)
+        cantidad = col1.number_input("Cantidad", 1)
+        costo = col2.number_input("Costo directo ($)", step=10000)
+        atraso = col3.number_input("Días de atraso", 0)
 
-        cantidad = st.number_input("Cantidad robada", 1)
-        col3, col4 = st.columns(2)
-        costo_directo = col3.number_input("Costo directo ($)", step=10000)
-        dias_atraso = col4.number_input("Días de atraso", 0)
         costo_mo = st.number_input("Costo mano de obra ($)", step=10000)
 
-        st.subheader("🔒 Seguridad")
-        camara_activa = st.selectbox("¿Cámaras activas?", ["Sí", "No"])
-        camara_alerto = st.selectbox("¿Cámaras alertaron?", ["Sí", "No"])
-        guardia_presente = st.selectbox("¿Había guardia?", ["Sí", "No"])
-        guardia_detecto = st.selectbox("¿Guardia detectó?", ["Sí", "No"])
-
         if st.form_submit_button("💾 Guardar robo"):
-            nuevo = pd.DataFrame([{
-                "fecha": fecha,
-                "hora": hora.strftime("%H:%M"),
+            guardar_registro({
+                "fecha": datetime.now().date(),
+                "hora": datetime.now().strftime("%H:%M"),
                 "tipo_obra": "Edificio",
                 "obra": obra,
                 "sector": sector,
                 "partida": partida,
-                "zona_vulnerada": zona,
+                "zona": zona,
                 "tipo_robo": tipo_robo,
                 "detalle": detalle,
                 "cantidad": cantidad,
-                "costo_directo": costo_directo,
-                "dias_atraso": dias_atraso,
-                "costo_mano_obra": costo_mo,
-                "camara_activa": camara_activa,
-                "camara_alerto": camara_alerto,
-                "guardia_presente": guardia_presente,
-                "guardia_detecto": guardia_detecto
-            }])
+                "costo_directo": costo,
+                "dias_atraso": atraso,
+                "costo_mano_obra": costo_mo
+            })
+            st.success("Robo guardado y archivo actualizado")
 
-            df_db = pd.concat([df_db, nuevo], ignore_index=True)
-            df_db.to_csv(DB_FILE, index=False)
-            st.success("Robo registrado correctamente")
-
-# =====================================================
+# =============================
 # CASAS
-# =====================================================
-with tab_casas:
+# =============================
+with tab2:
     st.header("🏘️ Registro de robo – Casas")
 
     with st.form("form_casas"):
-        obra = st.selectbox("Proyecto de Casas", OBRAS_CASAS)
+        obra = st.selectbox("Proyecto de casas", OBRAS_CASAS)
         sector = st.text_input("Manzana / Lote")
-        partida = st.selectbox("Partida afectada", [
-            "Sanitarias", "Eléctricas", "Gas",
-            "Terminaciones", "Estructura", "Seguridad", "Otra"
-        ])
+        partida = st.text_input("Partida afectada")
+        zona = st.text_input("Zona vulnerada")
+        tipo_robo = st.text_input("Tipo de material robado")
+        detalle = st.text_area("Detalle del robo")
 
-        col1, col2 = st.columns(2)
-        with col1:
-            fecha = st.date_input("Fecha del robo", key="fc")
-            hora = st.time_input("Hora aproximada", key="hc")
-            zona = st.selectbox("Zona vulnerada", ["Bodega", "Acceso", "Cerco", "Interior", "Otro"], key="zc")
-        with col2:
-            tipo_robo = st.selectbox("Tipo de material robado", [
-                "Instalaciones sanitarias",
-                "Instalaciones eléctricas",
-                "Herramientas",
-                "Maquinaria",
-                "Terminaciones",
-                "Otros"
-            ], key="trc")
-            detalle = st.text_area("Detalle del robo", key="dc")
+        col1, col2, col3 = st.columns(3)
+        cantidad = col1.number_input("Cantidad", 1, key="c1")
+        costo = col2.number_input("Costo directo ($)", step=10000, key="c2")
+        atraso = col3.number_input("Días de atraso", 0, key="c3")
 
-        cantidad = st.number_input("Cantidad robada", 1, key="qc")
-        col3, col4 = st.columns(2)
-        costo_directo = col3.number_input("Costo directo ($)", step=10000, key="cdc")
-        dias_atraso = col4.number_input("Días de atraso", 0, key="dac")
-        costo_mo = st.number_input("Costo mano de obra ($)", step=10000, key="moc")
-
-        st.subheader("🔒 Seguridad")
-        camara_activa = st.selectbox("¿Cámaras activas?", ["Sí", "No"], key="cac")
-        camara_alerto = st.selectbox("¿Cámaras alertaron?", ["Sí", "No"], key="clc")
-        guardia_presente = st.selectbox("¿Había guardia?", ["Sí", "No"], key="gpc")
-        guardia_detecto = st.selectbox("¿Guardia detectó?", ["Sí", "No"], key="gdc")
+        costo_mo = st.number_input("Costo mano de obra ($)", step=10000, key="c4")
 
         if st.form_submit_button("💾 Guardar robo"):
-            nuevo = pd.DataFrame([{
-                "fecha": fecha,
-                "hora": hora.strftime("%H:%M"),
+            guardar_registro({
+                "fecha": datetime.now().date(),
+                "hora": datetime.now().strftime("%H:%M"),
                 "tipo_obra": "Casas",
                 "obra": obra,
                 "sector": sector,
                 "partida": partida,
-                "zona_vulnerada": zona,
+                "zona": zona,
                 "tipo_robo": tipo_robo,
                 "detalle": detalle,
                 "cantidad": cantidad,
-                "costo_directo": costo_directo,
-                "dias_atraso": dias_atraso,
-                "costo_mano_obra": costo_mo,
-                "camara_activa": camara_activa,
-                "camara_alerto": camara_alerto,
-                "guardia_presente": guardia_presente,
-                "guardia_detecto": guardia_detecto
-            }])
-
-            df_db = pd.concat([df_db, nuevo], ignore_index=True)
-            df_db.to_csv(DB_FILE, index=False)
-            st.success("Robo registrado correctamente")
+                "costo_directo": costo,
+                "dias_atraso": atraso,
+                "costo_mano_obra": costo_mo
+            })
+            st.success("Robo guardado y archivo actualizado")
 
 # =============================
-# EXPORTAR A EXCEL / POWER BI
+# VISTA EN TIEMPO REAL
 # =============================
 st.markdown("---")
-st.header("📤 Exportación de datos")
+st.header("📊 Registro en tiempo real")
+st.write(f"📁 Carpeta local: {BASE_DIR}")
+st.dataframe(df_db, use_container_width=True)
 
-if len(df_db) > 0:
+# =============================
+# ENVÍO DE CORREO
+# =============================
+st.markdown("---")
+st.header("📧 Enviar registro por correo")
 
-    archivo_excel = "robos_analisis.xlsx"
+if os.path.exists(XLSX_PATH):
+    if st.button("📧 Enviar Excel por correo"):
+        resultado = enviar_excel_por_correo(XLSX_PATH)
 
-    with pd.ExcelWriter(archivo_excel, engine="openpyxl") as writer:
-
-        # 1️⃣ Base completa
-        df_db.to_excel(writer, sheet_name="Base_Robos", index=False)
-
-        # 2️⃣ Ranking de obras
-        if 'df_ranking' in locals():
-            df_ranking.to_excel(writer, sheet_name="Ranking_Obras", index=False)
-
-        # 3️⃣ Semáforo
-        if 'df_ranking' in locals() and 'Nivel de riesgo' in df_ranking.columns:
-            df_ranking[[
-                "Obra",
-                "Tipo de obra",
-                "Índice de vulnerabilidad",
-                "Nivel de riesgo"
-            ]].to_excel(writer, sheet_name="Semaforo_Riesgo", index=False)
-
-        # 4️⃣ Horarios críticos
-        if 'df_horario' in locals():
-            df_horario.to_excel(writer, sheet_name="Horarios_Criticos", index=False)
-
-        # 5️⃣ Comparativo mensual
-        if 'mensual' in locals():
-            mensual.to_excel(writer, sheet_name="Comparativo_Mensual", index=False)
-
-    st.caption("Exporta la base completa para Excel o Power BI")
-
-    with open(archivo_excel, "rb") as f:
-        st.download_button(
-            label="📥 Descargar Excel (Análisis de Robos)",
-            data=f,
-            file_name="robos_analisis.xlsx",
-            mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-            use_container_width=True
-        )
-
+        if resultado is True:
+            st.success("Excel enviado correctamente a CCTV y Oscar Molina.")
+        else:
+            st.error(f"Error al enviar correo: {resultado}")
 else:
-    st.info("Aún no hay datos registrados para exportar.")
+    st.info("Aún no existe un archivo Excel para enviar.")
 
 
