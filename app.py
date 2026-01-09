@@ -1,131 +1,140 @@
 import streamlit as st
-import re
+import pandas as pd
+import os
+from datetime import datetime
 
 # =============================
-# CONFIGURACIÓN GENERAL
+# CONFIGURACIÓN
 # =============================
-st.set_page_config(
-    page_title="Sistema corporativo de impacto por robos",
-    layout="wide"
-)
-
-st.title("📊 Sistema corporativo de análisis de impacto por robo en obra")
-st.write("Cálculo rápido, detallado y defendible del costo real del robo")
+st.set_page_config(page_title="Inteligencia de Robos en Obra", layout="wide")
+st.title("🔐 Sistema de Inteligencia y Análisis de Robos en Obra")
+st.write("Registro, análisis comparativo y detección de patrones")
 st.markdown("---")
 
-# =============================
-# BASE DE PRECIOS – MERCADO CHILENO
-# =============================
-BASE_PRECIOS = {
-    "calefon": ("Calefón a gas estándar", "unidad", 120000, 280000),
-    "monomando": ("Grifería monomando estándar", "unidad", 35000, 120000),
-    "cobre": ("Cañería de cobre sanitaria", "metro", 9000, 12000),
-    "cable": ("Cable eléctrico de cobre", "metro", 2500, 6000),
-    "tablero": ("Tablero eléctrico domiciliario", "unidad", 180000, 350000),
-    "herramienta": ("Herramientas manuales / eléctricas", "unidad", 30000, 150000)
-}
-
-def reconocer_producto(texto):
-    texto = texto.lower()
-    for k, v in BASE_PRECIOS.items():
-        if re.search(k, texto):
-            desc, unidad, pmin, pmax = v
-            prom = int((pmin + pmax) / 2)
-            return k, desc, unidad, pmin, pmax, prom
-    return "genérico", "Elemento de obra genérico", "unidad", 50000, 150000, 100000
+DB_FILE = "robos_db.csv"
 
 # =============================
-# CONFIGURACIÓN ECONÓMICA
+# BASE DE DATOS
 # =============================
-st.header("1️⃣ Parámetros económicos del proyecto")
+COLUMNAS = [
+    "fecha", "hora", "obra", "ubicacion", "zona_vulnerada",
+    "tipo_robo", "detalle", "cantidad",
+    "costo_directo", "dias_atraso",
+    "costo_atraso", "costo_mano_obra",
+    "camara_activa", "camara_alerto",
+    "guardia_presente", "guardia_detecto"
+]
 
-valor_vivienda = st.number_input("Valor promedio por vivienda ($)", 71000000, step=1000000)
-costo_dia_obra = st.number_input("Costo diario total de obra ($)", 2500000, step=100000)
-costo_mano_obra = st.number_input("Costo diario mano de obra ($)", 1200000, step=50000)
-tasa_capital = st.number_input("Costo de capital anual (%)", 10.0) / 100
-pago_final = st.number_input("Pago final retenido (%)", 20.0) / 100
+if not os.path.exists(DB_FILE):
+    pd.DataFrame(columns=COLUMNAS).to_csv(DB_FILE, index=False)
 
+df_db = pd.read_csv(DB_FILE)
+
+# =============================
+# FORMULARIO DE INGRESO
+# =============================
+st.header("📝 Registrar nuevo robo")
+
+with st.form("form_robo"):
+    col1, col2, col3 = st.columns(3)
+
+    with col1:
+        fecha = st.date_input("Fecha del robo")
+        hora = st.time_input("Hora aproximada")
+        obra = st.text_input("Nombre de la obra / ubicación")
+        zona = st.selectbox("Zona vulnerada", ["Bodega", "Acceso", "Cerco", "Interior", "Otro"])
+
+    with col2:
+        tipo_robo = st.selectbox("Tipo de material", [
+            "Instalaciones sanitarias",
+            "Instalaciones eléctricas",
+            "Herramientas",
+            "Maquinaria",
+            "Terminaciones",
+            "Otros"
+        ])
+        detalle = st.text_area("Detalle específico de lo robado")
+        cantidad = st.number_input("Cantidad", 1)
+
+    with col3:
+        costo_directo = st.number_input("Costo directo ($)", step=10000)
+        dias_atraso = st.number_input("Días de atraso", 0)
+        costo_atraso = st.number_input("Costo por atraso ($)", step=10000)
+        costo_mo = st.number_input("Costo mano de obra recontratada ($)", step=10000)
+
+    st.subheader("🔒 Seguridad")
+    camara_activa = st.selectbox("¿Cámaras activas?", ["Sí", "No"])
+    camara_alerto = st.selectbox("¿Cámaras alertaron?", ["Sí", "No"])
+    guardia_presente = st.selectbox("¿Había guardia?", ["Sí", "No"])
+    guardia_detecto = st.selectbox("¿Guardia detectó el robo?", ["Sí", "No"])
+
+    submit = st.form_submit_button("💾 Guardar robo")
+
+    if submit:
+        nuevo = pd.DataFrame([{
+            "fecha": fecha,
+            "hora": hora.strftime("%H:%M"),
+            "obra": obra,
+            "ubicacion": obra,
+            "zona_vulnerada": zona,
+            "tipo_robo": tipo_robo,
+            "detalle": detalle,
+            "cantidad": cantidad,
+            "costo_directo": costo_directo,
+            "dias_atraso": dias_atraso,
+            "costo_atraso": costo_atraso,
+            "costo_mano_obra": costo_mo,
+            "camara_activa": camara_activa,
+            "camara_alerto": camara_alerto,
+            "guardia_presente": guardia_presente,
+            "guardia_detecto": guardia_detecto
+        }])
+
+        df_db = pd.concat([df_db, nuevo], ignore_index=True)
+        df_db.to_csv(DB_FILE, index=False)
+        st.success("Robo registrado correctamente")
+
+# =============================
+# ANÁLISIS
+# =============================
 st.markdown("---")
+st.header("📊 Análisis comparativo de robos")
 
-# =============================
-# DETALLE DEL ROBO
-# =============================
-st.header("2️⃣ Evento de robo")
+if len(df_db) > 0:
 
-detalle = st.text_area("Detalle de lo robado", placeholder="Ej: 2 calefont ionizado + 5 monomando")
-cantidad = st.number_input("Cantidad robada", 1)
-dias_atraso = st.number_input("Días de atraso generados", 10)
-viviendas_afectadas = st.number_input("Viviendas afectadas", 0)
+    df_db["hora"] = pd.to_datetime(df_db["hora"], format="%H:%M").dt.hour
 
-# =============================
-# RECONOCIMIENTO Y PRECIO
-# =============================
-clave, desc, unidad, pmin, pmax, pref = reconocer_producto(detalle)
+    colA, colB = st.columns(2)
 
-st.markdown("### 🔎 Reconocimiento automático")
-st.write(f"""
-Producto identificado: **{desc}**  
-Unidad: **{unidad}**  
-Rango mercado Chile: **${pmin:,} – ${pmax:,}**
-""")
+    with colA:
+        st.subheader("⏰ Horas más frecuentes")
+        st.bar_chart(df_db["hora"].value_counts().sort_index())
 
-precio_unitario = st.number_input("Precio unitario de referencia ($)", pref, step=1000)
-costo_directo = cantidad * precio_unitario
+        st.subheader("🧱 Tipo de robo más repetido")
+        st.bar_chart(df_db["tipo_robo"].value_counts())
 
-# =============================
-# CÁLCULO FINAL
-# =============================
-if st.button("🧮 Calcular impacto real"):
+    with colB:
+        st.subheader("📍 Obras con más robos")
+        st.bar_chart(df_db["obra"].value_counts())
 
-    impacto_obra = dias_atraso * costo_dia_obra
-    impacto_mo = dias_atraso * costo_mano_obra
+        st.subheader("💰 Dinero robado por obra")
+        st.bar_chart(df_db.groupby("obra")["costo_directo"].sum())
 
-    if viviendas_afectadas > 0:
-        capital_inmovilizado = viviendas_afectadas * valor_vivienda * pago_final
-        impacto_comercial = capital_inmovilizado * (tasa_capital / 365) * dias_atraso
-        impacto_financiero = impacto_comercial
-    else:
-        impacto_comercial = impacto_financiero = 0
-        capital_inmovilizado = 0
+    st.subheader("🚨 Fallas de seguridad")
+    col1, col2 = st.columns(2)
 
-    impacto_total = costo_directo + impacto_obra + impacto_mo + impacto_comercial
+    with col1:
+        st.metric(
+            "% cámaras NO alertaron",
+            f"{round((df_db[df_db['camara_alerto']=='No'].shape[0] / len(df_db))*100, 1)}%"
+        )
 
-    # =============================
-    # INFORME EXPLICADO
-    # =============================
-    st.markdown("## 📑 Informe técnico detallado")
+    with col2:
+        st.metric(
+            "% guardias NO detectaron",
+            f"{round((df_db[df_db['guardia_detecto']=='No'].shape[0] / len(df_db))*100, 1)}%"
+        )
 
-    st.markdown("### 1️⃣ Costo directo del robo")
-    st.write(f"""
-Se reconoce **{desc}** a partir del texto ingresado.  
-El precio unitario se define usando referencias del mercado chileno.  
-Costo directo = {cantidad} × ${precio_unitario:,.0f}
-""")
-    st.metric("Costo directo", f"${costo_directo:,.0f}")
-
-    st.markdown("### 2️⃣ Impacto operativo")
-    st.write(f"""
-El robo genera un atraso de **{dias_atraso} días**.
-Cada día de obra cuesta **${costo_dia_obra:,.0f}**.
-""")
-    st.metric("Impacto por atraso de obra", f"${impacto_obra:,.0f}")
-
-    st.markdown("### 3️⃣ Impacto mano de obra")
-    st.write(f"""
-Durante el atraso, la empresa mantiene personal y contratistas activos.
-Costo diario mano de obra = **${costo_mano_obra:,.0f}**.
-""")
-    st.metric("Impacto mano de obra", f"${impacto_mo:,.0f}")
-
-    st.markdown("### 4️⃣ Impacto financiero")
-    st.write(f"""
-El atraso inmoviliza pagos finales por **${capital_inmovilizado:,.0f}**.
-Se aplica una tasa anual de **{tasa_capital*100:.1f}%**, prorrateada por días.
-""")
-    st.metric("Impacto financiero", f"${impacto_financiero:,.0f}")
-
-    st.markdown("---")
-    st.metric("💥 IMPACTO ECONÓMICO TOTAL REAL", f"${impacto_total:,.0f}")
-
-    st.info("Informe basado en estimaciones técnicas y referencias públicas de mercado chileno.")
+else:
+    st.info("Aún no hay robos registrados")
 
