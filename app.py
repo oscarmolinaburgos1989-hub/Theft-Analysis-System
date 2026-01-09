@@ -207,23 +207,53 @@ with tab_casas:
             st.success("Robo registrado correctamente")
 
 # =============================
-# EXPORTACIÓN A EXCEL
+# EXPORTAR A EXCEL / POWER BI
 # =============================
 st.markdown("---")
 st.header("📤 Exportación de datos")
 
 if len(df_db) > 0:
+
     archivo_excel = "robos_analisis.xlsx"
-    df_db.to_excel(archivo_excel, index=False)
+
+    with pd.ExcelWriter(archivo_excel, engine="openpyxl") as writer:
+
+        # 1️⃣ Base completa
+        df_db.to_excel(writer, sheet_name="Base_Robos", index=False)
+
+        # 2️⃣ Ranking de obras
+        if 'df_ranking' in locals():
+            df_ranking.to_excel(writer, sheet_name="Ranking_Obras", index=False)
+
+        # 3️⃣ Semáforo
+        if 'df_ranking' in locals() and 'Nivel de riesgo' in df_ranking.columns:
+            df_ranking[[
+                "Obra",
+                "Tipo de obra",
+                "Índice de vulnerabilidad",
+                "Nivel de riesgo"
+            ]].to_excel(writer, sheet_name="Semaforo_Riesgo", index=False)
+
+        # 4️⃣ Horarios críticos
+        if 'df_horario' in locals():
+            df_horario.to_excel(writer, sheet_name="Horarios_Criticos", index=False)
+
+        # 5️⃣ Comparativo mensual
+        if 'mensual' in locals():
+            mensual.to_excel(writer, sheet_name="Comparativo_Mensual", index=False)
+
+    st.caption("Exporta la base completa para Excel o Power BI")
 
     with open(archivo_excel, "rb") as f:
         st.download_button(
-            label="📥 Descargar Excel (Base de Robos)",
+            label="📥 Descargar Excel (Análisis de Robos)",
             data=f,
             file_name="robos_analisis.xlsx",
-            mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+            mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+            use_container_width=True
         )
+
 else:
-    st.info("Aún no hay datos para exportar.")
+    st.info("Aún no hay datos registrados para exportar.")
 
 
