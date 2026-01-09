@@ -42,7 +42,8 @@ OBRAS_CASAS = [
     "Huertos de Chillán",
     "PU Chillán",
     "Coronel",
-    "Junquillar Retiro Sur"
+    "Junquillar",
+    "Retiro Sur"
 ]
 
 # =============================
