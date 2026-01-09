@@ -363,5 +363,68 @@ if len(df_ranking) > 0:
 
 else:
     st.info("Primero debe generarse el ranking de obras.")
+# =============================
+# PREDICCIÓN DE HORARIOS CRÍTICOS
+# =============================
+st.markdown("---")
+st.header("⏰ Predicción de horarios críticos de robo")
+
+if len(df_db) > 0:
+
+    # Asegurar hora como entero
+    df_db["hora"] = pd.to_datetime(df_db["hora"], format="%H:%M").dt.hour
+
+    riesgo_horario = []
+
+    for hora in range(24):
+        df_h = df_db[df_db["hora"] == hora]
+
+        if len(df_h) == 0:
+            continue
+
+        n_robos = len(df_h)
+        monto = df_h["costo_directo"].sum()
+        fallas = df_h[
+            (df_h["camara_alerto"] == "No") |
+            (df_h["guardia_detecto"] == "No")
+        ].shape[0]
+
+        indice = (
+            n_robos * 2 +
+            (monto / 1_000_000) +
+            (fallas * 3)
+        )
+
+        riesgo_horario.append({
+            "Hora": f"{hora:02d}:00",
+            "Robos": n_robos,
+            "Monto robado ($)": round(monto),
+            "Fallas de seguridad": fallas,
+            "Índice de riesgo": round(indice, 2)
+        })
+
+    df_horario = pd.DataFrame(riesgo_horario).sort_values(
+        "Índice de riesgo", ascending=False
+    )
+
+    st.subheader("📊 Ranking de horas más riesgosas")
+    st.dataframe(df_horario, use_container_width=True)
+
+    st.subheader("📈 Visualización del riesgo horario")
+    st.bar_chart(df_horario.set_index("Hora")["Índice de riesgo"])
+
+    # Conclusión automática
+    hora_critica = df_horario.iloc[0]
+
+    st.warning(
+        f"La franja horaria **{hora_critica['Hora']}** presenta el mayor nivel de riesgo. "
+        f"Concentra {hora_critica['Robos']} robos, "
+        f"un monto acumulado de ${hora_critica['Monto robado ($)']:,} "
+        f"y {hora_critica['Fallas de seguridad']} eventos con fallas de seguridad. "
+        f"Se recomienda reforzar vigilancia y controles en este horario."
+    )
+
+else:
+    st.info("No hay datos suficientes para analizar horarios críticos.")
 
 
