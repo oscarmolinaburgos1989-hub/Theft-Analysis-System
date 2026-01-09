@@ -82,7 +82,6 @@ with tab_edificios:
     with st.form("form_edificios"):
         obra = st.selectbox("Edificio", OBRAS_EDIFICIOS)
         sector = st.text_input("Torre / Piso / Sector")
-        contratista = st.text_input("Contratista responsable")
         partida = st.selectbox("Partida afectada", [
             "Sanitarias", "Eléctricas", "Gas",
             "Terminaciones", "Estructura", "Seguridad", "Otra"
@@ -155,7 +154,6 @@ with tab_casas:
     with st.form("form_casas"):
         obra = st.selectbox("Proyecto de Casas", OBRAS_CASAS)
         sector = st.text_input("Manzana / Lote")
-        contratista = st.text_input("Contratista responsable")
         partida = st.selectbox("Partida afectada", [
             "Sanitarias", "Eléctricas", "Gas",
             "Terminaciones", "Estructura", "Seguridad", "Otra"
